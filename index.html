@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOXEL TEARDOWN</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #11151c; font-family: 'Segoe UI', monospace, sans-serif; }
+  #c { display: block; width: 100%; height: 100%; cursor: none; }
+
+  /* Crosshair */
+  #cross {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 10;
+  }
+  #cross::before, #cross::after {
+    content: ''; position: absolute; background: rgba(255,255,255,.85);
+    box-shadow: 0 0 2px #000;
+  }
+  #cross::before { width: 2px; height: 18px; left: -1px; top: -9px; }
+  #cross::after  { width: 18px; height: 2px; left: -9px; top: -1px; }
+
+  /* HUD */
+  #hud {
+    position: fixed; left: 16px; bottom: 14px; z-index: 10; color: #fff;
+    text-shadow: 0 1px 3px #000; pointer-events: none; user-select: none;
+  }
+  #hud .weapon { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+  #hud .weapon span { color: #ffcc33; }
+  #hud .sub { font-size: 13px; opacity: .8; margin-top: 2px; }
+
+  #stats {
+    position: fixed; right: 14px; top: 12px; z-index: 10; color: #9fb4c9;
+    font-size: 12px; text-align: right; text-shadow: 0 1px 2px #000;
+    pointer-events: none; user-select: none; line-height: 1.5;
+  }
+
+  #weapons {
+    position: fixed; right: 14px; bottom: 14px; z-index: 10; display: flex; gap: 8px;
+    pointer-events: none; user-select: none;
+  }
+  #weapons .w {
+    background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.25);
+    border-radius: 8px; padding: 6px 10px; color: #cdd9e5; font-size: 12px; text-align: center;
+    min-width: 64px;
+  }
+  #weapons .w b { display: block; font-size: 15px; color: #fff; }
+  #weapons .w.active { border-color: #ffcc33; background: rgba(255,180,0,.18); }
+  #weapons .w .k { font-size: 10px; opacity: .6; }
+
+  /* Start overlay */
+  #overlay {
+    position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 35%, #1d2530, #0a0d12 80%);
+    color: #fff; text-align: center; cursor: pointer;
+  }
+  #overlay h1 {
+    font-size: 64px; font-weight: 900; letter-spacing: 4px;
+    background: linear-gradient(180deg,#ffd24a,#ff7a18);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 6px 30px rgba(255,120,20,.25);
+  }
+  #overlay .tag { color: #8fa3b8; margin-top: 4px; letter-spacing: 6px; font-size: 14px; }
+  #overlay .keys {
+    margin-top: 34px; color: #c7d3df; font-size: 15px; line-height: 2.1;
+    background: rgba(255,255,255,.04); padding: 22px 34px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  #overlay .keys kbd {
+    background: #2b3744; border: 1px solid #44545f; border-bottom-width: 3px;
+    border-radius: 6px; padding: 2px 9px; font-family: monospace; color: #fff; margin: 0 2px;
+  }
+  #overlay .play { margin-top: 30px; font-size: 20px; color: #ffcc33; font-weight: 700; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.55} 50%{opacity:1} }
+
+  #flash {
+    position: fixed; inset: 0; z-index: 9; background: #fff; opacity: 0;
+    pointer-events: none; transition: opacity .08s;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="cross"></div>
+<div id="flash"></div>
+
+<div id="hud">
+  <div class="weapon" id="wname">SİLAH: <span>POMPALI</span></div>
+  <div class="sub" id="whint">Sol tık: ateş • Sağ tık: nişan al</div>
+</div>
+
+<div id="stats">
+  <div id="fps">FPS: --</div>
+  <div id="vox">Voxel: --</div>
+  <div id="deb">Enkaz: --</div>
+</div>
+
+<div id="weapons">
+  <div class="w active" data-w="0"><span class="k">1</span><b>POMPALI</b>delik açar</div>
+  <div class="w" data-w="1"><span class="k">2</span><b>ROKETATAR</b>patlatır</div>
+  <div class="w" data-w="2"><span class="k">3</span><b>BALYOZ</b>parçalar</div>
+  <div class="w" data-w="3"><span class="k">4</span><b>BOMBA</b>fırlat</div>
+</div>
+
+<div id="overlay">
+  <h1>VOXEL TEARDOWN</h1>
+  <div class="tag">YIKIM SANDBOX</div>
+  <div class="keys">
+    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hareket &nbsp;•&nbsp; <kbd>Mouse</kbd> bak &nbsp;•&nbsp; <kbd>Space</kbd> zıpla &nbsp;•&nbsp; <kbd>Shift</kbd> koş</div>
+    <div><kbd>Sol Tık</kbd> ateş et &nbsp;•&nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> silah değiştir &nbsp;•&nbsp; <kbd>R</kbd> haritayı sıfırla</div>
+    <div><kbd>F</kbd> uçma modu &nbsp;•&nbsp; <kbd>Esc</kbd> fareyi serbest bırak</div>
+  </div>
+  <div class="play">▶ BAŞLAMAK İÇİN TIKLA</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ---------------------------------------------------------------------------
+//  TEMEL KURULUM
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); // fill maliyetini düşür
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe9c9a3);          // gün-batımı puslu gökyüzü
+scene.fog = new THREE.Fog(0xe9c9a3, 22, 95);           // sıcak toz pusu (kompakt sahne)
+
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 1000);
+
+// ---------------------------------------------------------------------------
+//  PROSEDÜREL DOKU (texture pack) — canvas ile çizilir, harici dosya yok
+// ---------------------------------------------------------------------------
+function makeBlockTexture() {
+  const s = 64, cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  const g = cv.getContext('2d');
+  // taban
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, s, s);
+  // gürültü (beton/tuğla hissi)
+  for (let i = 0; i < 1400; i++) {
+    const v = 200 + Math.random() * 55 | 0;
+    g.fillStyle = `rgba(${v},${v},${v},0.5)`;
+    g.fillRect(Math.random() * s, Math.random() * s, 1, 1);
+  }
+  // koyu kenar çerçevesi -> her küp ayrı ayrı okunur
+  g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 4;
+  g.strokeRect(2, 2, s - 4, s - 4);
+  g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 1;
+  g.strokeRect(6, 6, s - 12, s - 12);
+  // üstte hafif parlama
+  const grd = g.createLinearGradient(0, 0, 0, s);
+  grd.addColorStop(0, 'rgba(255,255,255,0.25)');
+  grd.addColorStop(0.5, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, s, s);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  return tex;
+}
+
+function makeGroundTexture() {
+  // Teardown avlusu: toprak/çakıl/asfalt karışımı
+  const s = 128, cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#6a5d4a'; g.fillRect(0, 0, s, s);
+  const shades = ['#5b4f3d', '#766852', '#544a39', '#7d7058', '#4f4636'];
+  for (let i = 0; i < 9000; i++) {
+    g.fillStyle = shades[Math.random() * shades.length | 0];
+    const r = 1 + Math.random() * 2;
+    g.fillRect(Math.random() * s, Math.random() * s, r, r);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(300, 300);
+  return tex;
+}
+
+const BLOCK_TEX = makeBlockTexture();
+const GROUND_TEX = makeGroundTexture();
+
+// Işıklar — alçak, sıcak gün-batımı güneşi (Teardown havası). SABİT, oyuncuyu takip etmez.
+// Gölge yalnızca yıkım olunca yeniden hesaplanır -> her kare gölge maliyeti yok.
+const sun = new THREE.DirectionalLight(0xffe0b0, 2.6);
+sun.position.set(34, 24, 20);     // alçak açı -> uzun gölgeler
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+const sc = sun.shadow.camera;
+sc.left = -28; sc.right = 28; sc.top = 28; sc.bottom = -28; sc.near = 1; sc.far = 140;
+sun.shadow.bias = -0.0005;
+sun.shadow.autoUpdate = false;   // her kare güncelleme YOK
+sun.shadow.needsUpdate = true;   // ilk kare için bir kez güncelle
+scene.add(sun);
+scene.add(sun.target); // hedef (0,0,0) — sabit
+scene.add(new THREE.HemisphereLight(0xffe2bd, 0x4a3b2a, 0.9)); // gökyüzü sıcak, yer toprak
+scene.add(new THREE.AmbientLight(0xffd9b0, 0.32));
+
+// Zemin (toprak avlu)
+const groundMat = new THREE.MeshStandardMaterial({ map: GROUND_TEX });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ---------------------------------------------------------------------------
+//  VOXEL DÜNYASI  (InstancedMesh + swap-remove ile O(1) silme)
+// ---------------------------------------------------------------------------
+const VOX = 0.1;                    // voxel boyutu = GERÇEK Teardown (10cm, metrede 10 voxel)
+const MAX_VOX = 250000;             // üst sınır
+const dummy = new THREE.Object3D();
+const tmpColor = new THREE.Color();
+
+const voxGeo = new THREE.BoxGeometry(VOX, VOX, VOX);
+const voxMat = new THREE.MeshStandardMaterial({ map: BLOCK_TEX, roughness: 0.9, metalness: 0.0 });
+const voxMesh = new THREE.InstancedMesh(voxGeo, voxMat, MAX_VOX);
+voxMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+voxMesh.castShadow = true;
+voxMesh.receiveShadow = true;
+scene.add(voxMesh);
+
+let activeCount = 0;
+const voxelMap = new Map();         // "x,y,z" -> slot
+const slotKey  = new Array(MAX_VOX);
+const slotPos  = new Array(MAX_VOX); // [x,y,z]
+
+function keyOf(x, y, z) { return x + ',' + y + ',' + z; }
+
+function addVoxel(x, y, z, color) {
+  if (activeCount >= MAX_VOX) return;
+  const k = keyOf(x, y, z);
+  if (voxelMap.has(k)) return;
+  const slot = activeCount++;
+  voxelMap.set(k, slot);
+  slotKey[slot] = k;
+  slotPos[slot] = [x, y, z];
+  dummy.position.set((x + 0.5) * VOX, (y + 0.5) * VOX, (z + 0.5) * VOX);
+  dummy.scale.set(1, 1, 1);
+  dummy.rotation.set(0, 0, 0);
+  dummy.updateMatrix();
+  voxMesh.setMatrixAt(slot, dummy.matrix);
+  voxMesh.setColorAt(slot, tmpColor.set(color));
+}
+
+function isSolid(x, y, z) { return voxelMap.has(keyOf(x, y, z)); }
+
+// swap-remove: silinen slota son aktif voxeli taşı
+const _m = new THREE.Matrix4(), _c = new THREE.Color();
+function removeSlot(slot) {
+  const k = slotKey[slot];
+  voxelMap.delete(k);
+  const last = activeCount - 1;
+  if (slot !== last) {
+    voxMesh.getMatrixAt(last, _m); voxMesh.setMatrixAt(slot, _m);
+    voxMesh.getColorAt(last, _c);  voxMesh.setColorAt(slot, _c);
+    slotKey[slot] = slotKey[last];
+    slotPos[slot] = slotPos[last];
+    voxelMap.set(slotKey[slot], slot);
+  }
+  activeCount--;
+  voxMesh.count = activeCount;
+}
+
+// ---------------------------------------------------------------------------
+//  HARİTA OLUŞTURMA
+// ---------------------------------------------------------------------------
+function clearWorld() {
+  activeCount = 0;
+  voxelMap.clear();
+  voxMesh.count = 0;
+}
+
+function lerpColor(a, b, t) {
+  const ca = new THREE.Color(a), cb = new THREE.Color(b);
+  return ca.lerp(cb, t).getHex();
+}
+
+// --- Teardown tarzı yapı blokları (koordinatlar 0.1m ızgara) ---
+const _col = new THREE.Color();
+function shadeHex(hex, s) { return _col.set(hex).multiplyScalar(s).getHex(); }
+// her voxele deterministik hafif renk gürültüsü (tuğla/ahşap dokusu)
+function jit(hex, x, y, z, amp) {
+  const n = (((x * 131 + y * 57 + z * 191) % 100) + 100) % 100 / 100;
+  return shadeHex(hex, 1 - amp + n * 2 * amp);
+}
+function fillBox(gx, gy, gz, w, h, d, hex, amp = 0.07) {
+  for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) for (let z = 0; z < d; z++)
+    addVoxel(gx + x, gy + y, gz + z, jit(hex, gx + x, gy + y, gz + z, amp));
+}
+
+// Tuğla depo: içi boş kabuk + kapı + pencereler + beşik (gable) çatı
+function warehouse(ox, oz, w, d, wallH, brick, roof) {
+  const T = 2; // duvar kalınlığı 0.2m
+  for (let y = 0; y < wallH; y++) for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) {
+    const onX = x < T || x >= w - T, onZ = z < T || z >= d - T;
+    if (!(onX || onZ)) continue;                 // içi boş
+    // büyük garaj kapısı (ön duvar, z<T)
+    if (z < T && x > w / 2 - 11 && x < w / 2 + 11 && y < 26) continue;
+    // pencereler (y 13..24, ekseni boyunca periyodik) — köşeler kapalı
+    if (y >= 13 && y <= 24) {
+      if (onZ && !onX && x > T + 4 && x < w - T - 4 && ((x - T) % 24) < 13) continue;
+      if (onX && !onZ && z > T + 4 && z < d - T - 4 && ((z - T) % 24) < 13) continue;
+    }
+    addVoxel(ox + x, y, oz + z, jit(brick, x, y, z, 0.12));
+  }
+  // beşik çatı (x ekseninde tepe), z boyunca uzanır, saçak taşkın
+  const peak = Math.floor(w / 2);
+  for (let z = -3; z < d + 3; z++) for (let x = -3; x < w + 3; x++) {
+    const dist = Math.abs(x - w / 2);
+    const ry = wallH + Math.max(0, peak - Math.floor(dist) - 4);
+    for (let t = 0; t < 2; t++) addVoxel(ox + x, ry - t, oz + z, jit(roof, x, ry, z, 0.08));
+  }
+}
+
+// Ahşap baraka: tek eğimli çatı + kapı
+function shed(ox, oz, w, d, h, wood, roof) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) {
+    const onX = x < 1 || x >= w - 1, onZ = z < 1 || z >= d - 1;
+    if (!(onX || onZ)) continue;
+    if (z < 1 && x > w / 2 - 6 && x < w / 2 + 6 && y < 18) continue; // kapı
+    addVoxel(ox + x, y, oz + z, jit(wood, x, y, z, 0.14));
+  }
+  for (let x = -2; x < w + 2; x++) for (let z = -2; z < d + 2; z++)
+    addVoxel(ox + x, h + Math.floor(x / 7), oz + z, jit(roof, x, 0, z, 0.08));
+}
+
+function crate(ox, oy, oz, s, wood) { fillBox(ox, oy, oz, s, s, s, wood, 0.05); }
+
+function barrel(ox, oy, oz, r, h, hex) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < 2 * r; x++) for (let z = 0; z < 2 * r; z++) {
+    const dx = x - r + 0.5, dz = z - r + 0.5;
+    if (dx * dx + dz * dz <= r * r) addVoxel(ox + x, oy + y, oz + z, jit(hex, x, y, z, 0.05));
+  }
+}
+
+function tree(ox, oz, trunkH, r) {
+  for (let y = 0; y < trunkH; y++) fillBox(ox, y, oz, 2, 1, 2, 0x5e4326, 0.12);
+  const cy = trunkH + r;
+  for (let x = -r; x <= r; x++) for (let y = -r; y <= r; y++) for (let z = -r; z <= r; z++) {
+    const d2 = x * x + y * y + z * z;
+    if (d2 <= r * r && (d2 > (r - 3) * (r - 3) || ((x + y + z) & 1) === 0))
+      addVoxel(ox + 1 + x, cy + y, oz + 1 + z, jit(0x4e7a35, x, y, z, 0.2));
+  }
+}
+
+function fence(ox, oz, len, dir, hex) {
+  for (let i = 0; i < len; i++) {
+    const x = dir === 'x' ? ox + i : ox, z = dir === 'x' ? oz : oz + i;
+    addVoxel(x, 6, z, jit(hex, x, 6, z, 0.1)); addVoxel(x, 12, z, jit(hex, x, 12, z, 0.1));
+    if (i % 14 === 0) for (let y = 0; y < 16; y++) addVoxel(x, y, z, jit(hex, x, y, z, 0.1));
+  }
+}
+
+function pylon(ox, oz, h) {
+  const m = 0x8d9094, span = 10;
+  for (let y = 0; y < h; y++) {
+    const inset = Math.floor(y / (h / 4)); const s = span - 2 * inset;
+    for (const [cx, cz] of [[0, 0], [s, 0], [0, s], [s, s]])
+      addVoxel(ox + inset + cx, y, oz + inset + cz, m);
+    if (y % 18 === 0) for (let k = 0; k <= s; k++) {
+      addVoxel(ox + inset + k, y, oz + inset, m); addVoxel(ox + inset + k, y, oz + inset + s, m);
+      addVoxel(ox + inset, y, oz + inset + k, m); addVoxel(ox + inset + s, y, oz + inset + k, m);
+    }
+  }
+  // üst kollar
+  for (let k = -8; k < span + 8; k++) addVoxel(ox + k, h, oz + 4, m);
+}
+
+function truck(ox, oz, cab) {
+  fillBox(ox + 1, 5, oz, 20, 13, 34, 0x9aa0a6, 0.04);     // kasa
+  fillBox(ox, 4, oz + 34, 22, 17, 17, cab, 0.04);          // kabin
+  fillBox(ox + 2, 11, oz + 36, 18, 6, 5, 0x202428, 0.02);  // ön cam (koyu)
+  for (const [wx, wz] of [[1, 6], [16, 6], [1, 40], [16, 40]]) // tekerlekler
+    fillBox(ox + wx, 0, oz + wz, 5, 5, 6, 0x1a1a1d, 0.03);
+}
+
+function car(ox, oz, body) {
+  fillBox(ox, 3, oz, 28, 7, 14, body, 0.04);              // gövde
+  fillBox(ox + 5, 10, oz + 1, 16, 7, 12, body, 0.04);      // kabin
+  fillBox(ox + 7, 12, oz + 2, 12, 4, 10, 0x1c2024, 0.02);  // camlar
+  for (const [wx, wz] of [[2, 1], [22, 1], [2, 10], [22, 10]])
+    fillBox(ox + wx, 0, oz + wz, 5, 4, 4, 0x141416, 0.02); // tekerlekler
+}
+
+// Beton bina: içi boş kabuk + giriş + pencereler + düz çatı + parapet
+function block(ox, oz, w, d, h, col, roof) {
+  const T = 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) {
+    const onX = x < T || x >= w - T, onZ = z < T || z >= d - T;
+    if (!(onX || onZ)) continue;
+    if (z < T && x > w / 2 - 9 && x < w / 2 + 9 && y < 24) continue; // giriş
+    if (y >= 12 && y <= h - 8) {
+      if (onZ && !onX && x > T + 3 && x < w - T - 3 && (x % 22) < 13) continue;
+      if (onX && !onZ && z > T + 3 && z < d - T - 3 && (z % 22) < 13) continue;
+    }
+    addVoxel(ox + x, y, oz + z, jit(col, x, y, z, 0.08));
+  }
+  for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) addVoxel(ox + x, h, oz + z, jit(roof, x, h, z, 0.05));
+  for (let x = 0; x < w; x++) { addVoxel(ox + x, h + 1, oz, roof); addVoxel(ox + x, h + 1, oz + d - 1, roof); }
+  for (let z = 0; z < d; z++) { addVoxel(ox, h + 1, oz + z, roof); addVoxel(ox + w - 1, h + 1, oz + z, roof); }
+}
+
+function generateMap() {
+  clearWorld();
+  // === Teardown tarzı endüstriyel avlu (her hücre 0.1m) ===
+  warehouse(-50, -78, 100, 72, 52, 0xa24b39, 0x6e4326);   // ana tuğla depo
+  shed(58, -50, 44, 36, 30, 0x9c6b3a, 0x6e4a28);          // ahşap baraka
+  block(96, -120, 62, 52, 46, 0x9a958b, 0x6f6a60);        // beton ofis binası (arka sağ)
+
+  // istiflenmiş sandıklar
+  crate(-34, 0, 22, 9, 0xb5853f); crate(-25, 0, 22, 9, 0xa9793a);
+  crate(-34, 0, 31, 9, 0xb07c39); crate(-30, 9, 26, 9, 0xbd8c45);
+  crate(40, 0, 8, 8, 0xa9793a); crate(48, 0, 8, 8, 0xb5853f);
+
+  // varil/bidonlar
+  barrel(18, 0, 14, 4, 9, 0xd9622e); barrel(27, 0, 16, 4, 9, 0x2f76b0);
+  barrel(18, 0, 23, 4, 9, 0xd94646); barrel(-46, 0, 6, 4, 9, 0xc9a23a);
+
+  // ağaçlar
+  tree(70, 22, 9, 13); tree(-72, 4, 8, 12);
+
+  // çit (avlu kenarı)
+  fence(-78, 30, 150, 'x', 0x7a5630);
+  fence(-78, 30, 70, 'z', 0x7a5630);
+
+  // elektrik direği (arkada)
+  pylon(86, -70, 86);
+
+  // araçlar
+  truck(-96, 6, 0x355f93);
+  car(34, 40, 0xb53636);
+  car(-70, 48, 0x2f7a4a);
+
+  // yerde dağınık tahtalar/moloz
+  fillBox(-12, 0, 40, 28, 2, 4, 0x8a6234, 0.1);
+  fillBox(-10, 2, 41, 24, 2, 4, 0x7c5730, 0.1);
+  fillBox(30, 0, 38, 4, 2, 22, 0x8a6234, 0.1);
+  voxMesh.count = activeCount;                       // <-- ÖNEMLİ: olmadan hiçbir şey çizilmez
+  voxMesh.instanceMatrix.needsUpdate = true;
+  if (voxMesh.instanceColor) voxMesh.instanceColor.needsUpdate = true;
+  if (sun) sun.shadow.needsUpdate = true;
+}
+generateMap();
+
+// ---------------------------------------------------------------------------
+//  ENKAZ (yıkım parçacıkları) — basit fizik
+// ---------------------------------------------------------------------------
+const MAX_DEBRIS = 1400;
+const debrisGeo = new THREE.BoxGeometry(VOX * 0.95, VOX * 0.95, VOX * 0.95);
+const debrisMesh = new THREE.InstancedMesh(debrisGeo, voxMat.clone(), MAX_DEBRIS);
+debrisMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+debrisMesh.castShadow = true;
+debrisMesh.count = 0;
+scene.add(debrisMesh);
+
+const debris = []; // {pos:Vec3, vel:Vec3, rot:Vec3, rotV:Vec3, life}
+function spawnDebris(x, y, z, color, impulse) {
+  if (debris.length >= MAX_DEBRIS) debris.shift();
+  debris.push({
+    pos: new THREE.Vector3((x + 0.5) * VOX, (y + 0.5) * VOX, (z + 0.5) * VOX),
+    vel: new THREE.Vector3(
+      (Math.random() - 0.5) * 6 + impulse.x,
+      Math.random() * 7 + 2 + impulse.y,
+      (Math.random() - 0.5) * 6 + impulse.z),
+    rot: new THREE.Euler(Math.random() * 6, Math.random() * 6, Math.random() * 6),
+    rotV: new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8),
+    color: new THREE.Color(color),
+    life: 2.2 + Math.random() * 1.5
+  });
+}
+
+function updateDebris(dt) {
+  for (let i = debris.length - 1; i >= 0; i--) {
+    const d = debris[i];
+    d.life -= dt;
+    if (d.life <= 0) { debris.splice(i, 1); continue; }
+    d.vel.y -= 22 * dt;
+    d.pos.addScaledVector(d.vel, dt);
+    if (d.pos.y < VOX * 0.5) { // zemine çarpma
+      d.pos.y = VOX * 0.5;
+      d.vel.y *= -0.35;
+      d.vel.x *= 0.7; d.vel.z *= 0.7;
+    }
+    d.rot.x += d.rotV.x * dt; d.rot.y += d.rotV.y * dt; d.rot.z += d.rotV.z * dt;
+  }
+  // render
+  debrisMesh.count = debris.length;
+  for (let i = 0; i < debris.length; i++) {
+    const d = debris[i];
+    dummy.position.copy(d.pos);
+    dummy.rotation.copy(d.rot);
+    const s = Math.min(1, d.life); // sönerken küçül
+    dummy.scale.set(s, s, s);
+    dummy.updateMatrix();
+    debrisMesh.setMatrixAt(i, dummy.matrix);
+    debrisMesh.setColorAt(i, d.color);
+  }
+  debrisMesh.instanceMatrix.needsUpdate = true;
+  if (debrisMesh.instanceColor) debrisMesh.instanceColor.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------------------
+//  ATEŞ & DUMAN (GPU parçacık sistemi — Points + özel shader)
+// ---------------------------------------------------------------------------
+function makePuffTexture() {
+  const s = 64, cv = document.createElement('canvas'); cv.width = cv.height = s;
+  const g = cv.getContext('2d');
+  const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.45, 'rgba(255,255,255,0.55)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, s, s);
+  return new THREE.CanvasTexture(cv);
+}
+const PUFF_TEX = makePuffTexture();
+
+function makeParticleSystem(max, blending) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(max * 3), col = new Float32Array(max * 3);
+  const sz = new Float32Array(max), al = new Float32Array(max);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('pcolor', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('psize', new THREE.BufferAttribute(sz, 1));
+  geo.setAttribute('palpha', new THREE.BufferAttribute(al, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { map: { value: PUFF_TEX }, scale: { value: 700 } },
+    vertexShader: `attribute vec3 pcolor; attribute float psize; attribute float palpha;
+      varying vec3 vC; varying float vA; uniform float scale;
+      void main(){ vC=pcolor; vA=palpha;
+        vec4 mv=modelViewMatrix*vec4(position,1.0);
+        gl_PointSize = max(1.0, psize*scale/(-mv.z));
+        gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `uniform sampler2D map; varying vec3 vC; varying float vA;
+      void main(){ vec4 t=texture2D(map, gl_PointCoord);
+        if(t.a*vA < 0.01) discard;
+        gl_FragColor = vec4(vC, t.a*vA); }`,
+    transparent: true, depthWrite: false, blending
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  return { geo, pos, col, sz, al, list: [], max, mat };
+}
+const smokeSys = makeParticleSystem(2500, THREE.NormalBlending);
+const fireSys = makeParticleSystem(2500, THREE.AdditiveBlending);
+const fireSources = []; // kalıcı alev kaynakları {x,y,z,life}
+
+function emit(sys, x, y, z, vx, vy, vz, size, grow, r, g, b, life) {
+  const L = sys.list; if (L.length >= sys.max) L.shift();
+  L.push({ x, y, z, vx, vy, vz, size, grow, r, g, b, life, max: life });
+}
+function updateParticles(sys, dt, gravity, damp, fadePow) {
+  const L = sys.list, f = Math.pow(damp, dt);
+  for (let i = L.length - 1; i >= 0; i--) {
+    const p = L[i]; p.life -= dt;
+    if (p.life <= 0) { L.splice(i, 1); continue; }
+    p.vy += gravity * dt; p.vx *= f; p.vy *= f; p.vz *= f;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    p.size += p.grow * dt;
+  }
+  const n = L.length;
+  for (let i = 0; i < n; i++) {
+    const p = L[i], t = p.life / p.max; // 1..0
+    sys.pos[i * 3] = p.x; sys.pos[i * 3 + 1] = p.y; sys.pos[i * 3 + 2] = p.z;
+    sys.col[i * 3] = p.r; sys.col[i * 3 + 1] = p.g; sys.col[i * 3 + 2] = p.b;
+    sys.sz[i] = Math.max(0.02, p.size);
+    sys.al[i] = Math.pow(t, fadePow);
+  }
+  sys.geo.setDrawRange(0, n);
+  sys.geo.attributes.position.needsUpdate = true;
+  sys.geo.attributes.pcolor.needsUpdate = true;
+  sys.geo.attributes.psize.needsUpdate = true;
+  sys.geo.attributes.palpha.needsUpdate = true;
+}
+function updateFireSources(dt) {
+  for (let i = fireSources.length - 1; i >= 0; i--) {
+    const s = fireSources[i]; s.life -= dt;
+    if (s.life <= 0) { fireSources.splice(i, 1); continue; }
+    if (Math.random() < dt * 30) // titreyen alev
+      emit(fireSys, s.x + (Math.random() - .5) * .6, s.y + Math.random() * .3, s.z + (Math.random() - .5) * .6,
+        (Math.random() - .5), Math.random() * 2.5 + 1.5, (Math.random() - .5),
+        0.5 + Math.random() * 0.4, -0.4, 1.0, 0.5 + Math.random() * 0.3, 0.08, 0.3 + Math.random() * 0.25);
+    if (Math.random() < dt * 14) // yükselen duman
+      emit(smokeSys, s.x + (Math.random() - .5) * .6, s.y + .4, s.z + (Math.random() - .5) * .6,
+        (Math.random() - .5) * .8, Math.random() * 1.5 + 1, (Math.random() - .5) * .8,
+        0.7, 1.0, 0.22, 0.2, 0.18, 1.4 + Math.random());
+  }
+}
+function spawnDust(wx, wy, wz, scale) {
+  for (let i = 0; i < 10 * scale; i++)
+    emit(smokeSys, wx + (Math.random() - .5) * scale, wy + (Math.random() - .5) * scale, wz + (Math.random() - .5) * scale,
+      (Math.random() - .5) * 2, Math.random() * 1.5 + .3, (Math.random() - .5) * 2,
+      scale * 0.5 + Math.random() * scale * 0.4, scale * 1.3, 0.55, 0.5, 0.43, 0.6 + Math.random() * 0.6);
+}
+function spawnExplosion(wx, wy, wz, scale) {
+  for (let i = 0; i < 40 * scale; i++) {
+    const a = Math.random() * 6.283, sp = Math.random() * 7 * scale;
+    emit(fireSys, wx, wy, wz, Math.cos(a) * sp, Math.random() * 6 * scale + 1, Math.sin(a) * sp,
+      scale * 0.7, -scale * 0.35, 1.0, 0.5 + Math.random() * 0.35, 0.1, 0.25 + Math.random() * 0.3);
+  }
+  for (let i = 0; i < 28 * scale; i++) {
+    const a = Math.random() * 6.283, sp = Math.random() * 4 * scale;
+    emit(smokeSys, wx, wy, wz, Math.cos(a) * sp, Math.random() * 3 * scale + 1, Math.sin(a) * sp,
+      scale * 0.9, scale * 1.4, 0.26, 0.24, 0.22, 1.4 + Math.random() * 1.3);
+  }
+  fireSources.push({ x: wx, y: wy, z: wz, life: 1.4 + scale });
+}
+
+// ---------------------------------------------------------------------------
+//  BOMBA (atılabilir patlayıcı)
+// ---------------------------------------------------------------------------
+const bombGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+const bombMat = new THREE.MeshStandardMaterial({ color: 0x222428, roughness: 0.5, metalness: 0.3 });
+const bombs = []; // {mesh, vel:Vec3, fuse}
+function throwBomb(origin, dir) {
+  const m = new THREE.Mesh(bombGeo, bombMat); m.castShadow = true;
+  m.position.copy(origin).addScaledVector(dir, 0.6);
+  scene.add(m);
+  bombs.push({ mesh: m, vel: dir.clone().multiplyScalar(17).add(new THREE.Vector3(0, 2.5, 0)), fuse: 2.4 });
+}
+function explodeAt(wx, wy, wz, radiusM) {
+  const cx = Math.floor(wx / VOX), cy = Math.floor(wy / VOX), cz = Math.floor(wz / VOX);
+  destroySphere(cx, cy, cz, radiusM / VOX, true, null);
+  spawnExplosion(wx, wy, wz, 1.6);
+  muzzleFlash(0.7);
+}
+function updateBombs(dt) {
+  for (let i = bombs.length - 1; i >= 0; i--) {
+    const b = bombs[i]; b.fuse -= dt;
+    b.vel.y -= 22 * dt;
+    const p = b.mesh.position;
+    p.addScaledVector(b.vel, dt);
+    // basit çarpışma: voxel ya da zemin
+    if (p.y < 0.11) { p.y = 0.11; b.vel.y *= -0.4; b.vel.x *= 0.6; b.vel.z *= 0.6; }
+    if (isSolid(Math.floor(p.x / VOX), Math.floor(p.y / VOX), Math.floor(p.z / VOX))) {
+      p.addScaledVector(b.vel, -dt); b.vel.multiplyScalar(-0.3);
+    }
+    b.mesh.rotation.x += dt * 4; b.mesh.rotation.z += dt * 5;
+    if (b.fuse <= 0) {
+      explodeAt(p.x, p.y, p.z, 2.8);
+      scene.remove(b.mesh); bombs.splice(i, 1);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  YAPISAL ÇÖKME — zemine bağlı kalmayan parçalar kopar (Teardown'ın imzası)
+//  Zeminden (y<=0) başlayıp 6-komşu flood-fill; ulaşılamayan voxeller düşer.
+// ---------------------------------------------------------------------------
+const encV = (x, y, z) => (x + 1024) + (y + 1024) * 2048 + (z + 1024) * 4194304;
+function applyGravity() {
+  const N = activeCount;
+  if (N === 0) return;
+  const present = new Set(), reached = new Set(), q = [];
+  for (let i = 0; i < N; i++) { const p = slotPos[i]; present.add(encV(p[0], p[1], p[2])); }
+  // zemine oturan voxeller = ankraj
+  for (let i = 0; i < N; i++) {
+    const p = slotPos[i];
+    if (p[1] <= 0) { const k = encV(p[0], p[1], p[2]); if (!reached.has(k)) { reached.add(k); q.push(p[0], p[1], p[2]); } }
+  }
+  let qi = 0;
+  while (qi < q.length) {
+    const x = q[qi++], y = q[qi++], z = q[qi++]; let k;
+    k = encV(x + 1, y, z); if (present.has(k) && !reached.has(k)) { reached.add(k); q.push(x + 1, y, z); }
+    k = encV(x - 1, y, z); if (present.has(k) && !reached.has(k)) { reached.add(k); q.push(x - 1, y, z); }
+    k = encV(x, y + 1, z); if (present.has(k) && !reached.has(k)) { reached.add(k); q.push(x, y + 1, z); }
+    k = encV(x, y - 1, z); if (present.has(k) && !reached.has(k)) { reached.add(k); q.push(x, y - 1, z); }
+    k = encV(x, y, z + 1); if (present.has(k) && !reached.has(k)) { reached.add(k); q.push(x, y, z + 1); }
+    k = encV(x, y, z - 1); if (present.has(k) && !reached.has(k)) { reached.add(k); q.push(x, y, z - 1); }
+  }
+  if (reached.size === N) return; // hepsi bağlı -> çökme yok
+  // kopanları topla (koordinatla; slotlar silinince kayar)
+  const floaters = [];
+  for (let i = 0; i < N; i++) { const p = slotPos[i]; if (!reached.has(encV(p[0], p[1], p[2]))) floaters.push(p[0], p[1], p[2]); }
+  let budget = 150;
+  for (let i = 0; i < floaters.length; i += 3) {
+    const x = floaters[i], y = floaters[i + 1], z = floaters[i + 2];
+    const slot = voxelMap.get(keyOf(x, y, z));
+    if (slot === undefined) continue;
+    if (budget-- > 0) { voxMesh.getColorAt(slot, _c); spawnDebris(x, y, z, _c.getHex(), _zero); }
+    removeSlot(slot);
+  }
+  voxMesh.instanceMatrix.needsUpdate = true;
+  if (voxMesh.instanceColor) voxMesh.instanceColor.needsUpdate = true;
+  sun.shadow.needsUpdate = true;
+}
+const _zero = new THREE.Vector3(0, -1, 0);
+
+// ---------------------------------------------------------------------------
+//  YIKIM
+// ---------------------------------------------------------------------------
+function destroySphere(cx, cy, cz, radius, makeDebris, blastDir) {
+  const r2 = radius * radius;
+  const ri = Math.ceil(radius);
+  const toRemove = [];
+  for (let x = cx - ri; x <= cx + ri; x++)
+    for (let y = cy - ri; y <= cy + ri; y++)
+      for (let z = cz - ri; z <= cz + ri; z++) {
+        const dx = x - cx, dy = y - cy, dz = z - cz;
+        if (dx * dx + dy * dy + dz * dz <= r2 && voxelMap.has(keyOf(x, y, z)))
+          toRemove.push([x, y, z]);
+      }
+  let debrisBudget = makeDebris ? Math.min(toRemove.length, 70) : 0;
+  for (const [x, y, z] of toRemove) {
+    const slot = voxelMap.get(keyOf(x, y, z));
+    if (slot === undefined) continue;
+    if (debrisBudget-- > 0) {
+      voxMesh.getColorAt(slot, _c);
+      const imp = blastDir
+        ? blastDir.clone().multiplyScalar(4 + Math.random() * 4)
+        : new THREE.Vector3();
+      spawnDebris(x, y, z, _c.getHex(), imp);
+    }
+    removeSlot(slot);
+  }
+  if (toRemove.length) {
+    voxMesh.instanceMatrix.needsUpdate = true;
+    if (voxMesh.instanceColor) voxMesh.instanceColor.needsUpdate = true;
+    sun.shadow.needsUpdate = true; // geometri değişti -> gölgeyi bir kez yenile
+    if (toRemove.length >= 20) applyGravity(); // anlamlı yıkımda desteksiz parçalar çöksün
+  }
+  return toRemove.length;
+}
+
+// ---------------------------------------------------------------------------
+//  SİLAHLAR
+// ---------------------------------------------------------------------------
+// çaplar METRE cinsinden (0.1m voxellere uygun gerçekçi delik boyutları)
+const WEAPONS = [
+  { name: 'POMPALI',   hint: 'Çift namlu — delik açar',        radius: 0.7,  debris: true, rof: 0.55, reach: Infinity, kind: 'gun'    },
+  { name: 'ROKETATAR', hint: 'Büyük patlama + ateş',           radius: 2.2,  debris: true, rof: 1.0,  reach: Infinity, kind: 'rocket' },
+  { name: 'BALYOZ',    hint: 'Yakın dövüş — duvarı parçalar',  radius: 0.5,  debris: true, rof: 0.45, reach: 3.5,      kind: 'melee'  },
+  { name: 'BOMBA',     hint: 'Fırlat — fitilli patlayıcı',     radius: 2.8,  debris: true, rof: 0.8,  reach: Infinity, kind: 'bomb'   },
+  { name: 'TABANCA',   hint: 'Hızlı — küçük delik',            radius: 0.28, debris: true, rof: 0.16, reach: Infinity, kind: 'gun'    },
+  { name: 'AV TÜFEĞİ', hint: 'Hassas — güçlü tek atış',        radius: 0.45, debris: true, rof: 0.65, reach: Infinity, kind: 'gun'    },
+];
+let curWeapon = 0;
+let fireTimer = 0;
+
+// --- SİLAH MODELLERİ (viewmodel, kameraya bağlı) ---
+scene.add(camera); // çocuk meshlerin çizilmesi için kamera sahneye eklenmeli
+
+const vmRoot = new THREE.Group();
+vmRoot.position.set(0.34, -0.30, -0.6); // ekranın sağ-alt köşesi
+camera.add(vmRoot);
+
+function mat(c, opts = {}) {
+  return new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.4, ...opts });
+}
+function box(w, h, d, c, x = 0, y = 0, z = 0, opts) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, opts));
+  m.position.set(x, y, z);
+  return m;
+}
+function cyl(rt, rb, len, c, opts) {
+  return new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, len, 18), mat(c, opts));
+}
+
+// ---- POMPALI (çift namlulu tüfek) ----
+const gunShotgun = new THREE.Group();
+{
+  const steel = { metalness: 0.9, roughness: 0.25 };
+  const wood  = { metalness: 0.0, roughness: 0.85 };
+  const bA = cyl(0.032, 0.032, 0.9, 0x23262b, steel); bA.rotation.x = Math.PI / 2; bA.position.set(0.035, 0.025, -0.32);
+  const bB = bA.clone(); bB.position.x = -0.035;
+  gunShotgun.add(bA, bB);
+  gunShotgun.add(box(0.135, 0.13, 0.20, 0x33383f, 0, 0.0, 0.10, steel));    // mekanizma
+  gunShotgun.add(box(0.115, 0.085, 0.34, 0x6e4a26, 0, -0.07, -0.16, wood)); // ön ahşap kabza
+  const stock = box(0.085, 0.13, 0.36, 0x5a3a1d, 0, -0.07, 0.34, wood);     // dipçik
+  stock.rotation.x = 0.16; gunShotgun.add(stock);
+  const guard = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 8, 16), mat(0x222222, steel));
+  guard.position.set(0, -0.08, 0.07); gunShotgun.add(guard);             // tetik korkuluğu
+}
+
+// ---- ROKETATAR ----
+const gunRocket = new THREE.Group();
+{
+  const body = { metalness: 0.45, roughness: 0.55 };
+  const tube = cyl(0.085, 0.085, 1.05, 0x3c5a34, body); tube.rotation.x = Math.PI / 2; tube.position.z = -0.18;
+  gunRocket.add(tube);
+  const exhaust = cyl(0.135, 0.085, 0.20, 0x2a3d26, body); exhaust.rotation.x = Math.PI / 2; exhaust.position.z = 0.40;
+  gunRocket.add(exhaust);
+  const warhead = new THREE.Mesh(new THREE.ConeGeometry(0.068, 0.20, 18), mat(0xcf4326, { metalness: 0.3, roughness: 0.5 }));
+  warhead.rotation.x = -Math.PI / 2; warhead.position.set(0, 0, -0.82); gunRocket.add(warhead);
+  gunRocket.add(box(0.02, 0.05, 0.40, 0x111317, 0, 0.12, -0.35));   // üst nişan rayı
+  gunRocket.add(box(0.035, 0.09, 0.035, 0x111317, 0, 0.16, -0.50)); // ön nişangah
+  const grip = box(0.07, 0.19, 0.09, 0x1d1f24, 0, -0.16, 0.06); grip.rotation.x = -0.12; gunRocket.add(grip);
+  gunRocket.add(box(0.06, 0.15, 0.07, 0x1d1f24, 0, -0.12, -0.34)); // ön tutamak
+}
+
+// ---- BALYOZ (Teardown ikonu) ----
+const gunHammer = new THREE.Group();
+{
+  const steel = { metalness: 0.7, roughness: 0.4 };
+  const wood  = { metalness: 0.0, roughness: 0.9 };
+  const handle = cyl(0.028, 0.034, 0.95, 0x7a4a22, wood); handle.position.y = -0.02; gunHammer.add(handle);
+  gunHammer.add(box(0.05, 0.28, 0.05, 0x2a2a2a, 0, -0.34, 0, wood)); // alt sarım
+  const head = new THREE.Group(); head.position.y = 0.46;
+  head.add(box(0.13, 0.20, 0.34, 0x4a4e55, 0, 0, 0, steel));
+  head.add(box(0.145, 0.07, 0.36, 0x2c2f35, 0, 0.085, 0, steel));   // üst bant
+  head.add(box(0.145, 0.07, 0.36, 0x2c2f35, 0, -0.085, 0, steel));  // alt bant
+  gunHammer.add(head);
+  gunHammer.rotation.set(-0.5, 0.35, 0.18);
+}
+
+// ---- BOMBA (fitilli boru bombası, elde) ----
+const gunBomb = new THREE.Group();
+{
+  const body = cyl(0.07, 0.07, 0.26, 0x2a2c30, { metalness: 0.4, roughness: 0.5 });
+  body.rotation.z = Math.PI / 2; gunBomb.add(body);
+  const cap2 = cyl(0.075, 0.075, 0.05, 0x55585e, { metalness: 0.6 }); cap2.position.x = 0.21; cap2.rotation.z = Math.PI / 2;
+  const cap1 = cyl(0.075, 0.075, 0.05, 0x55585e, { metalness: 0.6 }); cap1.position.x = -0.13; cap1.rotation.z = Math.PI / 2;
+  gunBomb.add(cap1, cap2);
+  gunBomb.add(box(0.27, 0.04, 0.04, 0xb03020, 0.04, 0.08, 0)); // kırmızı bant
+  gunBomb.rotation.set(0.1, 0, 0.2);
+}
+
+const VM_MODELS = [gunShotgun, gunRocket, gunHammer, gunBomb];
+VM_MODELS.forEach(g => { g.visible = false; vmRoot.add(g); });
+
+const vm = { kick: 0, bob: 0 }; // geri tepme ve yürüyüş sallanması
+
+function selectWeapon(i) {
+  curWeapon = i;
+  const w = WEAPONS[i];
+  document.querySelector('#wname span').textContent = w.name;
+  document.getElementById('whint').textContent = w.hint;
+  document.querySelectorAll('#weapons .w').forEach(el =>
+    el.classList.toggle('active', +el.dataset.w === i));
+  VM_MODELS.forEach((g, gi) => g.visible = gi === i);
+}
+selectWeapon(0);
+
+const raycaster = new THREE.Raycaster();
+const screenCenter = new THREE.Vector2(0, 0);
+
+function fire() {
+  const w = WEAPONS[curWeapon];
+  raycaster.setFromCamera(screenCenter, camera);
+  const dir = raycaster.ray.direction;
+
+  // geri tepme / savurma animasyonu ve efektler
+  vm.kick = Math.min(0.6, vm.kick + (w.kind === 'rocket' ? 0.4 : w.kind === 'melee' ? 0.75 : w.kind === 'bomb' ? 0.5 : 0.24));
+
+  // BOMBA: fırlat (parçalama anında değil, fitil bitince)
+  if (w.kind === 'bomb') { throwBomb(camera.position, dir); return; }
+
+  if (w.kind !== 'melee') {
+    muzzleFlash(w.kind === 'rocket' ? 0.9 : 0.4);
+    recoil(w.kind === 'rocket' ? 0.08 : 0.03);
+  }
+
+  // menzil içinde bir voxele isabet varsa parçala (dünya -> voxel ızgarası)
+  const hits = raycaster.intersectObject(voxMesh);
+  const hit = hits.length ? hits[0] : null;
+  if (hit && hit.distance <= w.reach) {
+    const point = hit.point.clone().addScaledVector(dir, VOX * 0.8);
+    const cx = Math.floor(point.x / VOX), cy = Math.floor(point.y / VOX), cz = Math.floor(point.z / VOX);
+    const removed = destroySphere(cx, cy, cz, w.radius / VOX, w.debris, dir);
+    if (removed > 0) {
+      if (w.kind === 'rocket') spawnExplosion(point.x, point.y, point.z, 1.5);
+      else spawnDust(point.x, point.y, point.z, w.kind === 'melee' ? 0.5 : 0.7);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  KONTROLLER (Pointer Lock FPS)
+// ---------------------------------------------------------------------------
+const player = {
+  pos: new THREE.Vector3(0, 1.9, 11),
+  vel: new THREE.Vector3(),
+  yaw: 0, pitch: -0.04,
+  onGround: false, fly: false,
+  height: 1.7, radius: 0.3
+};
+const keys = {};
+let mouseDown = false, locked = false;
+
+const overlay = document.getElementById('overlay');
+overlay.addEventListener('click', () => canvas.requestPointerLock());
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === canvas;
+  overlay.style.display = locked ? 'none' : 'flex';
+});
+
+document.addEventListener('mousemove', e => {
+  if (!locked) return;
+  player.yaw   -= e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  player.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, player.pitch));
+});
+
+document.addEventListener('mousedown', e => {
+  if (!locked) return;
+  if (e.button === 0) { mouseDown = true; }
+});
+document.addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Digit1') selectWeapon(0);
+  if (e.code === 'Digit2') selectWeapon(1);
+  if (e.code === 'Digit3') selectWeapon(2);
+  if (e.code === 'Digit4') selectWeapon(3);
+  if (e.code === 'KeyR') {
+    generateMap(); debris.length = 0; smokeSys.list.length = 0; fireSys.list.length = 0;
+    fireSources.length = 0; bombs.forEach(b => scene.remove(b.mesh)); bombs.length = 0;
+  }
+  if (e.code === 'KeyF') player.fly = !player.fly;
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+
+// Mouse wheel ile silah değiştir
+addEventListener('wheel', e => {
+  if (!locked) return;
+  const n = WEAPONS.length;
+  selectWeapon((curWeapon + (e.deltaY > 0 ? 1 : -1) + n) % n);
+});
+
+// ---------------------------------------------------------------------------
+//  ÇARPIŞMA (eksen-bazlı voxel çözümü)
+// ---------------------------------------------------------------------------
+function collideAxis(p, r, h) {
+  // dünya konumu -> voxel ızgarası (her hücre VOX birim)
+  const minX = Math.floor((p.x - r) / VOX), maxX = Math.floor((p.x + r) / VOX);
+  const minZ = Math.floor((p.z - r) / VOX), maxZ = Math.floor((p.z + r) / VOX);
+  const minY = Math.floor((p.y - h) / VOX), maxY = Math.floor((p.y - 0.05) / VOX);
+  for (let x = minX; x <= maxX; x++)
+    for (let y = minY; y <= maxY; y++)
+      for (let z = minZ; z <= maxZ; z++)
+        if (isSolid(x, y, z)) return true;
+  return false;
+}
+
+// her kare yeniden kullanılan geçici vektörler (GC duraklaması olmasın diye)
+const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
+const _wish = new THREE.Vector3(), _np = new THREE.Vector3();
+
+function move(dt) {
+  const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? 14 : 7;
+  _fwd.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  _right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+  _wish.set(0, 0, 0);
+  if (keys['KeyW']) _wish.add(_fwd);
+  if (keys['KeyS']) _wish.sub(_fwd);
+  if (keys['KeyD']) _wish.add(_right);
+  if (keys['KeyA']) _wish.sub(_right);
+  _wish.y = 0;
+  if (_wish.lengthSq() > 0) _wish.normalize().multiplyScalar(speed);
+
+  if (player.fly) {
+    let vy = 0;
+    if (keys['Space']) vy += speed;
+    if (keys['ControlLeft']) vy -= speed;
+    player.pos.addScaledVector(_wish, dt);
+    player.pos.y += vy * dt;
+    return;
+  }
+
+  // yatay hız (anlık), dikey hız (yerçekimi)
+  player.vel.x = _wish.x;
+  player.vel.z = _wish.z;
+  player.vel.y -= 26 * dt;
+  if (keys['Space'] && player.onGround) { player.vel.y = 9.5; player.onGround = false; }
+
+  const r = player.radius, h = player.height;
+  // X ekseni
+  _np.copy(player.pos); _np.x += player.vel.x * dt;
+  if (!collideAxis(_np, r, h)) player.pos.x = _np.x; else player.vel.x = 0;
+  // Z ekseni
+  _np.copy(player.pos); _np.z += player.vel.z * dt;
+  if (!collideAxis(_np, r, h)) player.pos.z = _np.z; else player.vel.z = 0;
+  // Y ekseni
+  _np.copy(player.pos); _np.y += player.vel.y * dt;
+  player.onGround = false;
+  if (!collideAxis(_np, r, h)) {
+    player.pos.y = _np.y;
+  } else {
+    if (player.vel.y < 0) player.onGround = true;
+    player.vel.y = 0;
+  }
+  // zemin (y=0)
+  if (player.pos.y - h < 0) { player.pos.y = h; player.vel.y = 0; player.onGround = true; }
+}
+
+// ---------------------------------------------------------------------------
+//  KAMERA EFEKTLERİ
+// ---------------------------------------------------------------------------
+let recoilAmt = 0;
+function recoil(a) { recoilAmt += a; }
+const flashEl = document.getElementById('flash');
+function muzzleFlash(strength) {
+  flashEl.style.opacity = strength * 0.5;
+  setTimeout(() => flashEl.style.opacity = 0, 60);
+}
+
+// ---------------------------------------------------------------------------
+//  ANA DÖNGÜ
+// ---------------------------------------------------------------------------
+let last = performance.now(), fpsAcc = 0, fpsCount = 0, fpsTimer = 0;
+const voxEl = document.getElementById('vox');
+const debEl = document.getElementById('deb');
+const fpsEl = document.getElementById('fps');
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  let dt = (now - last) / 1000; last = now;
+  if (dt > 0.05) dt = 0.05; // büyük sıçramaları sınırla
+
+  if (locked) {
+    move(dt);
+    // ateş
+    fireTimer -= dt;
+    if (mouseDown && fireTimer <= 0) {
+      fire();
+      fireTimer = WEAPONS[curWeapon].rof;
+    }
+  }
+  updateDebris(dt);
+  updateBombs(dt);
+  updateFireSources(dt);
+  updateParticles(smokeSys, dt, 1.5, 0.25, 1.1);   // duman: hafif yükselir, yavaşlar
+  updateParticles(fireSys, dt, 3.5, 0.18, 1.4);     // ateş: kısa ömür, hızlı söner
+
+  // kamerayı yerleştir (vektör ayırmadan)
+  recoilAmt *= Math.pow(0.001, dt); // hızlı sönüm
+  camera.position.copy(player.pos);
+  const pitch = player.pitch + recoilAmt;
+  _np.set(
+    player.pos.x - Math.sin(player.yaw) * Math.cos(pitch),
+    player.pos.y + Math.sin(pitch),
+    player.pos.z - Math.cos(player.yaw) * Math.cos(pitch));
+  camera.lookAt(_np);
+
+  // --- silah viewmodel animasyonu ---
+  vm.kick *= Math.pow(0.0008, dt);               // geri tepme sönümü
+  const moving = locked && !player.fly && player.onGround &&
+    (keys['KeyW'] || keys['KeyA'] || keys['KeyS'] || keys['KeyD']);
+  vm.bob = moving ? vm.bob + dt * 11 : 0;
+  const bobX = moving ? Math.cos(vm.bob) * 0.012 : 0;
+  const bobY = moving ? Math.abs(Math.sin(vm.bob)) * 0.018 : 0;
+  if (WEAPONS[curWeapon].kind === 'melee') {
+    // balyoz: aşağı/öne savurma
+    vmRoot.position.set(0.22 + bobX, -0.26 + bobY, -0.5);
+    vmRoot.rotation.x = -vm.kick * 2.6;
+  } else {
+    // tüfek/roket: geri tepme
+    vmRoot.position.set(0.34 + bobX, -0.30 + bobY, -0.6 + vm.kick * 0.5);
+    vmRoot.rotation.x = vm.kick * 1.1;
+  }
+
+  renderer.render(scene, camera);
+
+  // istatistik
+  fpsAcc += 1 / dt; fpsCount++; fpsTimer += dt;
+  if (fpsTimer > 0.4) {
+    fpsEl.textContent = 'FPS: ' + Math.round(fpsAcc / fpsCount);
+    voxEl.textContent = 'Voxel: ' + activeCount;
+    debEl.textContent = 'Enkaz: ' + debris.length;
+    fpsAcc = 0; fpsCount = 0; fpsTimer = 0;
+  }
+}
+requestAnimationFrame(loop);
+
+// ---------------------------------------------------------------------------
+//  RESIZE
+// ---------------------------------------------------------------------------
+function resize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  // parçacık nokta-boyutu ölçeği (dünya metresi -> piksel)
+  const s = innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  smokeSys.mat.uniforms.scale.value = s;
+  fireSys.mat.uniforms.scale.value = s;
+}
+addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>
