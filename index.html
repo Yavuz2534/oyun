@@ -79,6 +79,52 @@
     position: fixed; inset: 0; z-index: 9; background: #fff; opacity: 0;
     pointer-events: none; transition: opacity .08s;
   }
+
+  /* Can barı (alt orta) */
+  #health {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    z-index: 11; width: 320px; pointer-events: none; user-select: none; display: none;
+  }
+  #health .bar { height: 22px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.3);
+    border-radius: 6px; overflow: hidden; }
+  #health .fill { height: 100%; width: 100%; background: linear-gradient(90deg,#ff4040,#ff8a3a); transition: width .12s; }
+  #health .fill.shield { background: linear-gradient(90deg,#3aa0ff,#6ad0ff); }
+  #health .txt { color:#fff; font-size:13px; text-shadow:0 1px 3px #000; text-align:center; margin-top:3px; font-weight:700; }
+
+  /* Kill feed */
+  #killfeed { position: fixed; right: 14px; top: 60px; z-index: 11; text-align: right;
+    color:#fff; font-size:14px; text-shadow:0 1px 3px #000; pointer-events:none; }
+  #killfeed div { margin-bottom:3px; background:rgba(0,0,0,.4); padding:3px 8px; border-radius:5px; display:inline-block; }
+
+  /* Skor tablosu */
+  #scoreboard { position: fixed; left:50%; top:14px; transform:translateX(-50%); z-index:11;
+    color:#cdd9e5; font-size:13px; text-shadow:0 1px 2px #000; pointer-events:none; text-align:center; display:none; }
+  #scoreboard b { color:#ffcc33; }
+
+  /* Paneller (ayarlar + admin) */
+  .panel { position: fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:60;
+    background:#1b232e; border:1px solid #33414f; border-radius:14px; padding:22px 26px; color:#cdd9e5;
+    min-width:300px; display:none; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .panel h2 { color:#fff; margin-bottom:14px; font-size:20px; }
+  .panel label { display:flex; justify-content:space-between; align-items:center; gap:14px; margin:10px 0; font-size:14px; }
+  .panel input[type=range]{ width:150px; }
+  .panel button { background:#2b3744; color:#fff; border:1px solid #44545f; border-radius:7px;
+    padding:7px 12px; cursor:pointer; font-size:13px; margin:4px 4px 0 0; }
+  .panel button:hover{ background:#3a4a5a; }
+  .panel button.on{ background:#1f6f3a; border-color:#2c9650; }
+  .panel .close{ position:absolute; right:14px; top:12px; padding:3px 9px; }
+  .panel .row{ display:flex; flex-wrap:wrap; gap:4px; }
+  .panel input[type=text]{ background:#11171f; border:1px solid #33414f; color:#fff; border-radius:6px; padding:6px 8px; width:130px; }
+  #mpstatus{ font-size:12px; color:#8fa3b8; margin-top:8px; }
+
+  /* Mod menüsü butonları */
+  #modes { margin-top:30px; display:flex; gap:16px; }
+  #modes .mode { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.15);
+    border-radius:12px; padding:18px 26px; color:#fff; cursor:pointer; min-width:180px; transition:.15s; }
+  #modes .mode:hover{ border-color:#ffcc33; background:rgba(255,180,0,.12); transform:translateY(-2px); }
+  #modes .mode b{ display:block; font-size:20px; margin-bottom:4px; color:#ffcc33; }
+  #modes .mode span{ font-size:12px; opacity:.75; }
+  #hintbar{ position:fixed; left:16px; top:12px; z-index:11; color:#8fa3b8; font-size:12px; text-shadow:0 1px 2px #000; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -104,17 +150,59 @@
   <div class="w" data-w="3"><span class="k">4</span><b>BOMBA</b>fırlat</div>
 </div>
 
-<div id="overlay">
-  <h1>VOXEL TEARDOWN</h1>
-  <div class="tag">YIKIM SANDBOX</div>
-  <div class="keys">
-    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hareket &nbsp;•&nbsp; <kbd>Mouse</kbd> bak &nbsp;•&nbsp; <kbd>Space</kbd> zıpla &nbsp;•&nbsp; <kbd>Shift</kbd> koş</div>
-    <div><kbd>Sol Tık</kbd> ateş et &nbsp;•&nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> silah değiştir &nbsp;•&nbsp; <kbd>R</kbd> haritayı sıfırla</div>
-    <div><kbd>F</kbd> uçma modu &nbsp;•&nbsp; <kbd>Esc</kbd> fareyi serbest bırak</div>
-  </div>
-  <div class="play">▶ BAŞLAMAK İÇİN TIKLA</div>
+<div id="health"><div class="bar"><div class="fill" id="hpfill"></div></div><div class="txt" id="hptxt">100 HP</div></div>
+<div id="killfeed"></div>
+<div id="scoreboard"></div>
+<div id="hintbar"><kbd>O</kbd> Ayarlar &nbsp; <kbd>P</kbd> Admin &nbsp; <kbd>Esc</kbd> Menü</div>
+
+<!-- Ayarlar paneli -->
+<div class="panel" id="settings">
+  <button class="close" onclick="window.__closePanels()">✕</button>
+  <h2>⚙ Ayarlar</h2>
+  <label>Fare hassasiyeti <input type="range" id="setSens" min="0.5" max="4" step="0.1" value="1"></label>
+  <label>FOV <input type="range" id="setFov" min="60" max="100" step="1" value="72"></label>
+  <label>İsim <input type="text" id="setName" maxlength="12"></label>
 </div>
 
+<!-- Admin paneli -->
+<div class="panel" id="admin">
+  <button class="close" onclick="window.__closePanels()">✕</button>
+  <h2>🛡 Admin Panel</h2>
+  <label>Ölümsüzlük (god) <button id="admGod">KAPALI</button></label>
+  <label>Tek atışta öldür <button id="admOneshot">KAPALI</button></label>
+  <div class="row" style="margin-top:10px">
+    <button id="admHeal">Canı Doldur</button>
+    <button id="admKillAll">Herkesi Öldür</button>
+    <button id="admResetMap">Haritayı Sıfırla</button>
+  </div>
+  <div id="mpstatus"></div>
+</div>
+
+<div id="overlay">
+  <h1>VOXEL TEARDOWN</h1>
+  <div class="tag" id="ovtag">MOD SEÇ</div>
+  <div id="modes">
+    <div class="mode" data-mode="sandbox"><b>YIKIM</b><span>Sonsuz harita, sandbox yıkım. Tek kişi.</span></div>
+    <div class="mode" data-mode="arena"><b>PvP ARENA</b><span>Sınırlı arena, çok oyunculu savaş. Can & ölüm.</span></div>
+  </div>
+  <div class="keys" id="mpbox" style="display:none">
+    <div style="margin-bottom:10px"><b>ÇOK OYUNCULU</b></div>
+    <div class="row" style="justify-content:center">
+      <button onclick="window.__host()">ODA KUR (Host)</button>
+      <input type="text" id="joinCode" placeholder="oda kodu">
+      <button onclick="window.__join()">KATIL</button>
+      <button onclick="window.__solo()">Tek başına oyna</button>
+    </div>
+    <div id="mpinfo" style="margin-top:10px; font-size:13px; color:#8fa3b8"></div>
+  </div>
+  <div class="keys">
+    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hareket &nbsp;•&nbsp; <kbd>Space</kbd> zıpla &nbsp;•&nbsp; <kbd>Shift</kbd> koş &nbsp;•&nbsp; <kbd>Sol Tık</kbd> ateş</div>
+    <div><kbd>1-6</kbd> silah &nbsp;•&nbsp; <kbd>R</kbd> harita sıfırla &nbsp;•&nbsp; <kbd>F</kbd> uçma &nbsp;•&nbsp; <kbd>O</kbd> ayar &nbsp;•&nbsp; <kbd>P</kbd> admin</div>
+  </div>
+  <div class="play" id="playhint">▶ BİR MOD SEÇ</div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
 </script>
@@ -844,10 +932,14 @@ selectWeapon(0);
 const raycaster = new THREE.Raycaster();
 const screenCenter = new THREE.Vector2(0, 0);
 
+const WEAPON_DMG = { gun: 25, rocket: 80, melee: 55, bomb: 100 };
 function fire() {
+  if (LP.dead) return;
   const w = WEAPONS[curWeapon];
   raycaster.setFromCamera(screenCenter, camera);
   const dir = raycaster.ray.direction;
+  // PvP: önce oyuncu vuruşu
+  checkPlayerHit(dir, w.reach, WEAPON_DMG[w.kind] || 25);
 
   // geri tepme / savurma animasyonu ve efektler
   vm.kick = Math.min(0.6, vm.kick + (w.kind === 'rocket' ? 0.4 : w.kind === 'melee' ? 0.75 : w.kind === 'bomb' ? 0.5 : 0.24));
@@ -888,16 +980,57 @@ const keys = {};
 let mouseDown = false, locked = false;
 
 const overlay = document.getElementById('overlay');
-overlay.addEventListener('click', () => canvas.requestPointerLock());
+const GAME = { mode: null, started: false };
+overlay.addEventListener('click', e => {
+  // panel/buton/input tıklamaları kilidi tetiklemesin
+  if (e.target.closest('#modes') || e.target.closest('#mpbox') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+  if (GAME.started) canvas.requestPointerLock();
+});
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
-  overlay.style.display = locked ? 'none' : 'flex';
+  if (!locked && GAME.started && !panelOpen) overlay.style.display = 'flex';
+  else if (locked) overlay.style.display = 'none';
 });
+
+// --- Mod seçimi ---
+document.querySelectorAll('#modes .mode').forEach(el => {
+  el.addEventListener('click', () => {
+    GAME.mode = el.dataset.mode;
+    document.querySelectorAll('#modes .mode').forEach(m => m.style.borderColor = '');
+    el.style.borderColor = '#ffcc33';
+    if (GAME.mode === 'arena') {
+      document.getElementById('mpbox').style.display = 'block';
+      document.getElementById('ovtag').textContent = 'PvP ARENA';
+      document.getElementById('playhint').textContent = '▶ Oda kur, katıl veya tek başına oyna';
+    } else {
+      document.getElementById('mpbox').style.display = 'none';
+      document.getElementById('ovtag').textContent = 'YIKIM SANDBOX';
+      startGame(); // sandbox direkt başlar
+    }
+  });
+});
+
+function startGame() {
+  GAME.started = true;
+  if (GAME.mode === 'arena') {
+    generateArena();
+    document.getElementById('health').style.display = 'block';
+    document.getElementById('scoreboard').style.display = 'block';
+    respawn(true);
+  } else {
+    generateMap();
+    document.getElementById('health').style.display = 'none';
+    document.getElementById('scoreboard').style.display = 'none';
+  }
+  document.getElementById('playhint').textContent = '▶ BAŞLAMAK İÇİN TIKLA';
+  canvas.requestPointerLock();
+}
+window.__solo = () => { net.solo = true; startGame(); };
 
 document.addEventListener('mousemove', e => {
   if (!locked) return;
-  player.yaw   -= e.movementX * 0.0022;
-  player.pitch -= e.movementY * 0.0022;
+  player.yaw   -= e.movementX * 0.0022 * SETTINGS.sens;
+  player.pitch -= e.movementY * 0.0022 * SETTINGS.sens;
   player.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, player.pitch));
 });
 
@@ -915,7 +1048,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Digit3') selectWeapon(2);
   if (e.code === 'Digit4') selectWeapon(3);
   if (e.code === 'KeyR') {
-    generateMap(); debris.length = 0; smokeSys.list.length = 0; fireSys.list.length = 0;
+    (GAME.mode === 'arena' ? generateArena : generateMap)(); debris.length = 0; smokeSys.list.length = 0; fireSys.list.length = 0;
     fireSources.length = 0; bombs.forEach(b => scene.remove(b.mesh)); bombs.length = 0;
   }
   if (e.code === 'KeyF') player.fly = !player.fly;
@@ -1006,10 +1139,252 @@ function muzzleFlash(strength) {
   setTimeout(() => flashEl.style.opacity = 0, 60);
 }
 
+// ===========================================================================
+//  AYARLAR / ARENA / CAN / MULTIPLAYER / ADMIN
+// ===========================================================================
+const SETTINGS = { sens: 1, fov: 72, name: 'Oyuncu' + (Math.random() * 1000 | 0) };
+const ADMIN = { god: false, oneshot: false };
+let panelOpen = false;
+
+// --- Arena haritası (sınırlı, duvarlı) ---
+const ARENA = { size: 240, wall: 40 }; // voxel cinsinden (240*0.1 = 24m)
+function generateArena() {
+  clearWorld();
+  const S = ARENA.size, H = ARENA.wall, T = 3;
+  // dış duvarlar
+  for (let y = 0; y < H; y++) for (let i = 0; i < S; i++) for (let t = 0; t < T; t++) {
+    addVoxel(i, y, t, jit(0x8a8f96, i, y, t, 0.08));
+    addVoxel(i, y, S - 1 - t, jit(0x8a8f96, i, y, S - 1 - t, 0.08));
+    addVoxel(t, y, i, jit(0x8a8f96, t, y, i, 0.08));
+    addVoxel(S - 1 - t, y, i, jit(0x8a8f96, S - 1 - t, y, i, 0.08));
+  }
+  // siper kutuları (kapakların arkasına saklanma)
+  const covers = [[60,60],[160,60],[60,160],[160,160],[110,110]];
+  for (const [cx, cz] of covers) {
+    fillBox(cx, 0, cz, 22, 18, 22, 0xb5853f, 0.06);
+    fillBox(cx + 4, 18, cz + 4, 14, 8, 14, 0x9c6b3a, 0.06);
+  }
+  // rampa / platformlar
+  fillBox(30, 0, 100, 40, 8, 12, 0x9a958b, 0.05);
+  fillBox(170, 0, 130, 40, 14, 12, 0x9a958b, 0.05);
+  // birkaç varil
+  barrel(90, 0, 40, 4, 9, 0xd9622e); barrel(150, 0, 200, 4, 9, 0x2f76b0);
+  voxMesh.count = activeCount;
+  voxMesh.instanceMatrix.needsUpdate = true;
+  if (voxMesh.instanceColor) voxMesh.instanceColor.needsUpdate = true;
+  if (sun) sun.shadow.needsUpdate = true;
+}
+function arenaSpawn() {
+  const m = (ARENA.size * VOX);
+  return new THREE.Vector3(2 + Math.random() * (m - 4), 1.9, 2 + Math.random() * (m - 4));
+}
+
+// --- Can / ölüm / canlanma ---
+const LP = { hp: 100, maxHp: 100, dead: false, shieldUntil: 0, kills: 0, deaths: 0 };
+const hpfill = document.getElementById('hpfill'), hptxt = document.getElementById('hptxt');
+function updateHealthUI() {
+  const pct = Math.max(0, LP.hp) / LP.maxHp * 100;
+  hpfill.style.width = pct + '%';
+  const shielded = performance.now() < LP.shieldUntil;
+  hpfill.classList.toggle('shield', shielded);
+  hptxt.textContent = LP.dead ? 'ÖLDÜN — canlanıyor...' : Math.ceil(Math.max(0, LP.hp)) + ' HP' + (shielded ? ' 🛡' : '');
+}
+function applyDamage(dmg, fromName, fromId) {
+  if (GAME.mode !== 'arena' || LP.dead) return;
+  if (ADMIN.god || performance.now() < LP.shieldUntil) return;
+  LP.hp -= dmg;
+  flashEl.style.background = '#f00'; flashEl.style.opacity = 0.35;
+  setTimeout(() => { flashEl.style.opacity = 0; flashEl.style.background = '#fff'; }, 80);
+  if (LP.hp <= 0) die(fromName, fromId);
+  updateHealthUI();
+}
+function die(killer, killerId) {
+  LP.dead = true; LP.deaths++;
+  addKillFeed((killer || '?') + ' → ' + SETTINGS.name);
+  net.broadcast({ t: 'death', id: net.id, killer: killer || '?', victim: SETTINGS.name, killerId });
+  updateHealthUI();
+  setTimeout(() => respawn(false), 2200);
+}
+function respawn(initial) {
+  player.pos.copy(arenaSpawn());
+  player.vel.set(0, 0, 0);
+  LP.hp = LP.maxHp; LP.dead = false;
+  LP.shieldUntil = performance.now() + 3000; // canlanınca 3sn kalkan
+  updateHealthUI();
+}
+
+// --- Kill feed & skor ---
+const killfeedEl = document.getElementById('killfeed');
+function addKillFeed(txt) {
+  const d = document.createElement('div'); d.textContent = '💀 ' + txt;
+  killfeedEl.prepend(d);
+  setTimeout(() => d.remove(), 5000);
+}
+const scoreboardEl = document.getElementById('scoreboard');
+function updateScoreboard() {
+  if (GAME.mode !== 'arena') return;
+  let html = `<b>${SETTINGS.name}</b>: ${LP.kills} kill / ${LP.deaths} ölüm`;
+  for (const [id, p] of remotePlayers) html += ` &nbsp;|&nbsp; ${p.name}: ${p.kills || 0}/${p.deaths || 0}`;
+  scoreboardEl.innerHTML = html;
+}
+
+// --- Uzak oyuncu avatarları ---
+const remotePlayers = new Map(); // id -> {group, hit, name, hp, ...}
+const avatarGeo = new THREE.BoxGeometry(0.6, 1.7, 0.6);
+function makeNameSprite(name) {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const g = cv.getContext('2d'); g.font = 'bold 32px sans-serif'; g.textAlign = 'center';
+  g.fillStyle = '#000'; g.fillText(name, 129, 41); g.fillStyle = '#fff'; g.fillText(name, 128, 40);
+  const tex = new THREE.CanvasTexture(cv);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  sp.scale.set(1.4, 0.35, 1); sp.position.y = 1.3; return sp;
+}
+function getAvatar(id, name) {
+  let a = remotePlayers.get(id);
+  if (!a) {
+    const group = new THREE.Group();
+    const col = new THREE.Color().setHSL((parseInt(id.slice(-4), 36) % 100) / 100, 0.7, 0.5);
+    const body = new THREE.Mesh(avatarGeo, new THREE.MeshStandardMaterial({ color: col }));
+    body.castShadow = true; body.position.y = 0.85;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshStandardMaterial({ color: 0xffddaa }));
+    head.position.y = 1.85; group.add(body, head);
+    group.add(makeNameSprite(name || id.slice(0, 5)));
+    group.userData = { id, hit: body };
+    scene.add(group);
+    a = { group, hit: body, name: name || id.slice(0, 5), hp: 100, kills: 0, deaths: 0, dead: false, last: performance.now() };
+    remotePlayers.set(id, a);
+    body.userData.pid = id;
+  }
+  return a;
+}
+function removeAvatar(id) {
+  const a = remotePlayers.get(id);
+  if (a) { scene.remove(a.group); remotePlayers.delete(id); }
+}
+
+// --- Multiplayer (PeerJS, host=relay yıldız topoloji) ---
+const net = { peer: null, host: false, id: null, conns: [], hostConn: null, solo: false };
+function netSetup(asHost) {
+  net.peer = new Peer();
+  net.host = asHost;
+  net.peer.on('open', id => {
+    net.id = id;
+    if (asHost) {
+      document.getElementById('mpinfo').innerHTML = 'ODA KODU: <b style="color:#ffcc33">' + id + '</b><br>Arkadaşına bu kodu ver, sonra başlat.';
+      document.getElementById('playhint').textContent = '▶ BAŞLAT (oda: ' + id.slice(0, 6) + '...)';
+      startGame();
+    } else {
+      const code = document.getElementById('joinCode').value.trim();
+      const c = net.peer.connect(code, { reliable: false });
+      net.hostConn = c;
+      setupConn(c, true);
+    }
+  });
+  net.peer.on('connection', c => { net.conns.push(c); setupConn(c, false); });
+  net.peer.on('error', e => { document.getElementById('mpinfo').textContent = 'Bağlantı hatası: ' + e.type; });
+}
+function setupConn(c, isToHost) {
+  c.on('open', () => {
+    if (isToHost) { document.getElementById('mpinfo').textContent = 'Odaya bağlanıldı!'; startGame(); }
+  });
+  c.on('data', d => onNetData(c, d));
+  c.on('close', () => {
+    net.conns = net.conns.filter(x => x !== c);
+    if (c.peer) removeAvatar(c.peer);
+  });
+}
+function onNetData(conn, msg) {
+  // host: gelen mesajı diğerlerine yansıt
+  if (net.host) for (const c of net.conns) if (c !== conn && c.open) c.send(msg);
+  handleNet(msg);
+}
+function handleNet(msg) {
+  if (msg.id === net.id) return;
+  if (msg.t === 'state') {
+    const a = getAvatar(msg.id, msg.name);
+    a.name = msg.name; a.hp = msg.hp; a.kills = msg.kills; a.deaths = msg.deaths;
+    a.group.position.set(msg.x, msg.y - 1.7, msg.z);
+    a.group.rotation.y = msg.yaw;
+    a.group.visible = !msg.dead;
+    a.last = performance.now();
+  } else if (msg.t === 'hit' && msg.target === net.id) {
+    applyDamage(msg.dmg, msg.fromName, msg.fromId);
+  } else if (msg.t === 'death') {
+    const a = remotePlayers.get(msg.id); if (a) { a.deaths++; }
+    addKillFeed(msg.killer + ' → ' + msg.victim);
+    if (msg.killerId === net.id) { LP.kills++; updateScoreboard(); }
+  }
+}
+net.broadcast = (msg) => {
+  if (net.solo || !net.peer) return;
+  msg.id = msg.id || net.id;
+  if (net.host) { for (const c of net.conns) if (c.open) c.send(msg); }
+  else if (net.hostConn && net.hostConn.open) net.hostConn.send(msg);
+};
+window.__host = () => { document.getElementById('mpinfo').textContent = 'Oda kuruluyor...'; netSetup(true); };
+window.__join = () => {
+  if (!document.getElementById('joinCode').value.trim()) { document.getElementById('mpinfo').textContent = 'Oda kodu gir!'; return; }
+  document.getElementById('mpinfo').textContent = 'Bağlanılıyor...'; netSetup(false);
+};
+
+// uzak oyunculara nişan alıp vurma kontrolü (fire içinden çağrılır)
+function checkPlayerHit(dir, reach, dmg) {
+  if (GAME.mode !== 'arena') return false;
+  const meshes = [];
+  for (const [, a] of remotePlayers) if (a.group.visible) meshes.push(a.hit);
+  if (!meshes.length) return false;
+  raycaster.setFromCamera(screenCenter, camera);
+  const voxHit = raycaster.intersectObject(voxMesh)[0];
+  const pHit = raycaster.intersectObjects(meshes)[0];
+  if (pHit && pHit.distance <= reach && (!voxHit || pHit.distance < voxHit.distance)) {
+    const id = pHit.object.userData.pid;
+    const a = remotePlayers.get(id);
+    const realDmg = ADMIN.oneshot ? 999 : dmg;
+    net.broadcast({ t: 'hit', target: id, dmg: realDmg, fromName: SETTINGS.name, fromId: net.id });
+    spawnDust(pHit.point.x, pHit.point.y, pHit.point.z, 0.4);
+    return true;
+  }
+  return false;
+}
+
+// --- Paneller (Ayarlar + Admin) ---
+function openPanel(el) {
+  document.getElementById('settings').style.display = 'none';
+  document.getElementById('admin').style.display = 'none';
+  el.style.display = 'block'; panelOpen = true;
+  document.exitPointerLock();
+}
+window.__closePanels = () => {
+  document.getElementById('settings').style.display = 'none';
+  document.getElementById('admin').style.display = 'none';
+  panelOpen = false;
+  if (GAME.started) overlay.style.display = 'none', canvas.requestPointerLock();
+};
+// Ayarlar bağla
+document.getElementById('setSens').addEventListener('input', e => SETTINGS.sens = +e.target.value);
+document.getElementById('setFov').addEventListener('input', e => { SETTINGS.fov = +e.target.value; camera.fov = SETTINGS.fov; camera.updateProjectionMatrix(); });
+const nameInput = document.getElementById('setName'); nameInput.value = SETTINGS.name;
+nameInput.addEventListener('input', e => SETTINGS.name = e.target.value || 'Oyuncu');
+// Admin bağla
+const aGod = document.getElementById('admGod'), aOne = document.getElementById('admOneshot');
+aGod.addEventListener('click', () => { ADMIN.god = !ADMIN.god; aGod.textContent = ADMIN.god ? 'AÇIK' : 'KAPALI'; aGod.classList.toggle('on', ADMIN.god); updateHealthUI(); });
+aOne.addEventListener('click', () => { ADMIN.oneshot = !ADMIN.oneshot; aOne.textContent = ADMIN.oneshot ? 'AÇIK' : 'KAPALI'; aOne.classList.toggle('on', ADMIN.oneshot); });
+document.getElementById('admHeal').addEventListener('click', () => { LP.hp = LP.maxHp; LP.dead = false; updateHealthUI(); });
+document.getElementById('admKillAll').addEventListener('click', () => {
+  for (const [id, a] of remotePlayers) net.broadcast({ t: 'hit', target: id, dmg: 999, fromName: SETTINGS.name + ' (admin)' });
+});
+document.getElementById('admResetMap').addEventListener('click', () => { GAME.mode === 'arena' ? generateArena() : generateMap(); });
+// Panel kısayolları
+addEventListener('keydown', e => {
+  if (!GAME.started) return;
+  if (e.code === 'KeyO') { panelOpen ? window.__closePanels() : openPanel(document.getElementById('settings')); }
+  if (e.code === 'KeyP') { panelOpen ? window.__closePanels() : openPanel(document.getElementById('admin')); }
+});
+
 // ---------------------------------------------------------------------------
 //  ANA DÖNGÜ
 // ---------------------------------------------------------------------------
-let last = performance.now(), fpsAcc = 0, fpsCount = 0, fpsTimer = 0;
+let last = performance.now(), fpsAcc = 0, fpsCount = 0, fpsTimer = 0, netTimer = 0;
 const voxEl = document.getElementById('vox');
 const debEl = document.getElementById('deb');
 const fpsEl = document.getElementById('fps');
@@ -1033,6 +1408,20 @@ function loop(now) {
   updateFireSources(dt);
   updateParticles(smokeSys, dt, 1.5, 0.25, 1.1);   // duman: hafif yükselir, yavaşlar
   updateParticles(fireSys, dt, 3.5, 0.18, 1.4);     // ateş: kısa ömür, hızlı söner
+
+  // --- Multiplayer senkron + arena UI ---
+  if (GAME.mode === 'arena') {
+    netTimer += dt;
+    if (netTimer > 0.05) { // ~20Hz state broadcast
+      netTimer = 0;
+      net.broadcast({ t: 'state', x: player.pos.x, y: player.pos.y, z: player.pos.z,
+        yaw: player.yaw, name: SETTINGS.name, hp: LP.hp, dead: LP.dead, kills: LP.kills, deaths: LP.deaths });
+    }
+    // zaman aşımına uğrayan oyuncuları temizle
+    for (const [id, a] of remotePlayers) if (now - a.last > 5000) removeAvatar(id);
+    updateHealthUI();
+    updateScoreboard();
+  }
 
   // kamerayı yerleştir (vektör ayırmadan)
   recoilAmt *= Math.pow(0.001, dt); // hızlı sönüm
