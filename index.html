@@ -144,10 +144,11 @@
 </div>
 
 <div id="weapons">
-  <div class="w active" data-w="0"><span class="k">1</span><b>POMPALI</b>delik açar</div>
-  <div class="w" data-w="1"><span class="k">2</span><b>ROKETATAR</b>patlatır</div>
-  <div class="w" data-w="2"><span class="k">3</span><b>BALYOZ</b>parçalar</div>
-  <div class="w" data-w="3"><span class="k">4</span><b>BOMBA</b>fırlat</div>
+  <div class="w active" data-w="0"><span class="k">1</span><b>PISTOL</b>dengeli</div>
+  <div class="w" data-w="1"><span class="k">2</span><b>AK-47</b>otomatik</div>
+  <div class="w" data-w="2"><span class="k">3</span><b>UZI</b>çok hızlı</div>
+  <div class="w" data-w="3"><span class="k">4</span><b>POMPALI</b>güçlü</div>
+  <div class="w" data-w="4"><span class="k">5</span><b>BOMBA</b>fırlat</div>
 </div>
 
 <div id="health"><div class="bar"><div class="fill" id="hpfill"></div></div><div class="txt" id="hptxt">100 HP</div></div>
@@ -197,7 +198,7 @@
   </div>
   <div class="keys">
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hareket &nbsp;•&nbsp; <kbd>Space</kbd> zıpla &nbsp;•&nbsp; <kbd>Shift</kbd> koş &nbsp;•&nbsp; <kbd>Sol Tık</kbd> ateş</div>
-    <div><kbd>1-6</kbd> silah &nbsp;•&nbsp; <kbd>R</kbd> harita sıfırla &nbsp;•&nbsp; <kbd>F</kbd> uçma &nbsp;•&nbsp; <kbd>O</kbd> ayar &nbsp;•&nbsp; <kbd>P</kbd> admin</div>
+    <div><kbd>1-5</kbd> silah &nbsp;•&nbsp; <kbd>R</kbd> harita sıfırla &nbsp;•&nbsp; <kbd>F</kbd> uçma &nbsp;•&nbsp; <kbd>O</kbd> ayar &nbsp;•&nbsp; <kbd>P</kbd> admin</div>
   </div>
   <div class="play" id="playhint">▶ BİR MOD SEÇ</div>
 </div>
@@ -305,7 +306,7 @@ scene.add(ground);
 //  VOXEL DÜNYASI  (InstancedMesh + swap-remove ile O(1) silme)
 // ---------------------------------------------------------------------------
 const VOX = 0.1;                    // voxel boyutu = GERÇEK Teardown (10cm, metrede 10 voxel)
-const MAX_VOX = 250000;             // üst sınır
+const MAX_VOX = 1000000;            // üst sınır (büyük arena için yükseltildi)
 const dummy = new THREE.Object3D();
 const tmpColor = new THREE.Color();
 
@@ -721,6 +722,17 @@ function explodeAt(wx, wy, wz, radiusM) {
   destroySphere(cx, cy, cz, radiusM / VOX, true, null);
   spawnExplosion(wx, wy, wz, 1.6);
   muzzleFlash(0.7);
+  // PvP: patlama yarıçapındaki oyunculara hasar (çeyrek can)
+  if (GAME.mode === 'arena') {
+    const bp = new THREE.Vector3(wx, wy, wz), R = radiusM + 1.5;
+    for (const [id, a] of remotePlayers) {
+      if (!a.group.visible) continue;
+      if (a.group.position.distanceTo(bp) <= R)
+        net.broadcast({ t: 'hit', target: id, dmg: 25, fromName: SETTINGS.name + ' (bomba)', fromId: net.id });
+    }
+    // kendine de hasar (yakınsa)
+    if (player.pos.distanceTo(bp) <= R) applyDamage(25, 'Bomba', net.id);
+  }
 }
 function updateBombs(dt) {
   for (let i = bombs.length - 1; i >= 0; i--) {
@@ -815,7 +827,7 @@ function destroySphere(cx, cy, cz, radius, makeDebris, blastDir) {
     voxMesh.instanceMatrix.needsUpdate = true;
     if (voxMesh.instanceColor) voxMesh.instanceColor.needsUpdate = true;
     sun.shadow.needsUpdate = true; // geometri değişti -> gölgeyi bir kez yenile
-    if (toRemove.length >= 20) applyGravity(); // anlamlı yıkımda desteksiz parçalar çöksün
+    if (toRemove.length >= 20 && GAME.mode !== 'arena') applyGravity(); // sandbox: desteksiz parçalar çöksün (arenada perf için kapalı)
   }
   return toRemove.length;
 }
@@ -824,13 +836,13 @@ function destroySphere(cx, cy, cz, radius, makeDebris, blastDir) {
 //  SİLAHLAR
 // ---------------------------------------------------------------------------
 // çaplar METRE cinsinden (0.1m voxellere uygun gerçekçi delik boyutları)
+// dmg: PvP hasarı. Hızlı silah az, yavaş silah çok vurur. Bomba = çeyrek can (25).
 const WEAPONS = [
-  { name: 'POMPALI',   hint: 'Çift namlu — delik açar',        radius: 0.7,  debris: true, rof: 0.55, reach: Infinity, kind: 'gun'    },
-  { name: 'ROKETATAR', hint: 'Büyük patlama + ateş',           radius: 2.2,  debris: true, rof: 1.0,  reach: Infinity, kind: 'rocket' },
-  { name: 'BALYOZ',    hint: 'Yakın dövüş — duvarı parçalar',  radius: 0.5,  debris: true, rof: 0.45, reach: 3.5,      kind: 'melee'  },
-  { name: 'BOMBA',     hint: 'Fırlat — fitilli patlayıcı',     radius: 2.8,  debris: true, rof: 0.8,  reach: Infinity, kind: 'bomb'   },
-  { name: 'TABANCA',   hint: 'Hızlı — küçük delik',            radius: 0.28, debris: true, rof: 0.16, reach: Infinity, kind: 'gun'    },
-  { name: 'AV TÜFEĞİ', hint: 'Hassas — güçlü tek atış',        radius: 0.45, debris: true, rof: 0.65, reach: Infinity, kind: 'gun'    },
+  { name: 'PISTOL', hint: 'Dengeli — orta hasar',        radius: 0.30, debris: true, rof: 0.30, reach: Infinity, kind: 'gun',  dmg: 24, auto: false },
+  { name: 'AK-47',  hint: 'Tam otomatik — orta hız',     radius: 0.34, debris: true, rof: 0.11, reach: Infinity, kind: 'gun',  dmg: 17, auto: true  },
+  { name: 'UZI',    hint: 'Çok hızlı — düşük hasar',      radius: 0.26, debris: true, rof: 0.06, reach: Infinity, kind: 'gun',  dmg: 9,  auto: true  },
+  { name: 'POMPALI',hint: 'Yavaş — güçlü yakın dövüş',    radius: 0.55, debris: true, rof: 0.80, reach: Infinity, kind: 'gun',  dmg: 48, auto: false },
+  { name: 'BOMBA',  hint: 'Fırlat — çeyrek can hasar',    radius: 2.6,  debris: true, rof: 1.10, reach: Infinity, kind: 'bomb', dmg: 25, auto: false },
 ];
 let curWeapon = 0;
 let fireTimer = 0;
@@ -913,7 +925,39 @@ const gunBomb = new THREE.Group();
   gunBomb.rotation.set(0.1, 0, 0.2);
 }
 
-const VM_MODELS = [gunShotgun, gunRocket, gunHammer, gunBomb];
+// ---- PISTOL ----
+const gunPistol = new THREE.Group();
+{
+  const steel = { metalness: 0.85, roughness: 0.3 };
+  gunPistol.add(box(0.06, 0.05, 0.30, 0x2a2d33, 0, 0.02, -0.12, steel)); // gövde/namlu
+  gunPistol.add(box(0.055, 0.14, 0.07, 0x1c1f24, 0, -0.10, 0.06, steel)); // kabza
+  gunPistol.add(box(0.05, 0.04, 0.05, 0x141417, 0, 0.02, -0.28, steel));  // namlu ağzı
+  gunPistol.rotation.set(0.02, 0, 0);
+}
+// ---- AK-47 ----
+const gunAK = new THREE.Group();
+{
+  const steel = { metalness: 0.7, roughness: 0.4 };
+  const wood = { metalness: 0.0, roughness: 0.85 };
+  const bar = cyl(0.022, 0.022, 0.62, 0x1f2226, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.03, -0.34); gunAK.add(bar);
+  gunAK.add(box(0.07, 0.08, 0.34, 0x3a3f46, 0, 0, -0.05, steel)); // mekanizma
+  gunAK.add(box(0.06, 0.07, 0.22, 0x6e4a26, 0, -0.01, 0.22, wood)); // dipçik
+  // kavisli şarjör
+  const mag = box(0.05, 0.16, 0.09, 0x2a2d33, 0, -0.12, -0.02, steel); mag.rotation.x = -0.5; gunAK.add(mag);
+  gunAK.add(box(0.045, 0.11, 0.06, 0x1c1f24, 0, -0.10, 0.10, steel)); // kabza
+  gunAK.add(box(0.05, 0.06, 0.10, 0x6e4a26, 0, -0.06, -0.20, wood)); // ön kabza
+}
+// ---- UZI ----
+const gunUzi = new THREE.Group();
+{
+  const steel = { metalness: 0.8, roughness: 0.35 };
+  gunUzi.add(box(0.06, 0.10, 0.22, 0x26292e, 0, 0, -0.04, steel)); // gövde
+  const bar = cyl(0.018, 0.018, 0.20, 0x141417, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.02, -0.24); gunUzi.add(bar);
+  gunUzi.add(box(0.05, 0.18, 0.06, 0x1c1f24, 0, -0.13, 0.0, steel)); // uzun şarjör/kabza
+  gunUzi.rotation.set(0.04, 0, 0);
+}
+
+const VM_MODELS = [gunPistol, gunAK, gunUzi, gunShotgun, gunBomb];
 VM_MODELS.forEach(g => { g.visible = false; vmRoot.add(g); });
 
 const vm = { kick: 0, bob: 0 }; // geri tepme ve yürüyüş sallanması
@@ -932,14 +976,13 @@ selectWeapon(0);
 const raycaster = new THREE.Raycaster();
 const screenCenter = new THREE.Vector2(0, 0);
 
-const WEAPON_DMG = { gun: 25, rocket: 80, melee: 55, bomb: 100 };
 function fire() {
   if (LP.dead) return;
   const w = WEAPONS[curWeapon];
   raycaster.setFromCamera(screenCenter, camera);
   const dir = raycaster.ray.direction;
-  // PvP: önce oyuncu vuruşu
-  checkPlayerHit(dir, w.reach, WEAPON_DMG[w.kind] || 25);
+  // PvP: hitscan silahlarda oyuncu vuruşu (bomba patlamada hasar verir)
+  if (w.kind !== 'bomb') checkPlayerHit(dir, w.reach, w.dmg);
 
   // geri tepme / savurma animasyonu ve efektler
   vm.kick = Math.min(0.6, vm.kick + (w.kind === 'rocket' ? 0.4 : w.kind === 'melee' ? 0.75 : w.kind === 'bomb' ? 0.5 : 0.24));
@@ -1047,11 +1090,12 @@ addEventListener('keydown', e => {
   if (e.code === 'Digit2') selectWeapon(1);
   if (e.code === 'Digit3') selectWeapon(2);
   if (e.code === 'Digit4') selectWeapon(3);
+  if (e.code === 'Digit5') selectWeapon(4);
   if (e.code === 'KeyR') {
     (GAME.mode === 'arena' ? generateArena : generateMap)(); debris.length = 0; smokeSys.list.length = 0; fireSys.list.length = 0;
     fireSources.length = 0; bombs.forEach(b => scene.remove(b.mesh)); bombs.length = 0;
   }
-  if (e.code === 'KeyF') player.fly = !player.fly;
+  if (e.code === 'KeyF' && GAME.mode !== 'arena') player.fly = !player.fly;
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -1147,28 +1191,62 @@ const ADMIN = { god: false, oneshot: false };
 let panelOpen = false;
 
 // --- Arena haritası (sınırlı, duvarlı) ---
-const ARENA = { size: 240, wall: 40 }; // voxel cinsinden (240*0.1 = 24m)
+const ARENA = { size: 480, wall: 60 }; // 480*0.1 = 48m (eski boyutun 2 katı)
+// dolu rampa (yürünebilir merdiven)
+function ramp(ox, oy, oz, w, len, rise, hex, dir) {
+  for (let i = 0; i < len; i++) {
+    const h = oy + Math.floor(i / len * rise) + 1;
+    for (let y = 0; y < h; y++) for (let j = 0; j < w; j++) {
+      if (dir === 'x') addVoxel(ox + i, y, oz + j, jit(hex, ox + i, y, oz + j, 0.05));
+      else addVoxel(ox + j, y, oz + i, jit(hex, ox + j, y, oz + i, 0.05));
+    }
+  }
+}
 function generateArena() {
   clearWorld();
-  const S = ARENA.size, H = ARENA.wall, T = 3;
-  // dış duvarlar
-  for (let y = 0; y < H; y++) for (let i = 0; i < S; i++) for (let t = 0; t < T; t++) {
-    addVoxel(i, y, t, jit(0x8a8f96, i, y, t, 0.08));
-    addVoxel(i, y, S - 1 - t, jit(0x8a8f96, i, y, S - 1 - t, 0.08));
-    addVoxel(t, y, i, jit(0x8a8f96, t, y, i, 0.08));
-    addVoxel(S - 1 - t, y, i, jit(0x8a8f96, S - 1 - t, y, i, 0.08));
+  const S = ARENA.size, H = ARENA.wall, T = 3; // 0.3m kalın duvar
+  // === Kalın, mazgallı dış duvarlar (4 kenar; zemin mesh zaten taban) ===
+  for (let y = 0; y < H; y++) for (let i = 0; i < S; i++) {
+    const merlon = (y >= H - 6) && ((i % 12) < 6); // üstte mazgal boşlukları
+    if (merlon) continue;
+    for (let t = 0; t < T; t++) {
+      addVoxel(i, y, t, jit(0x7f8489, i, y, t, 0.07));
+      addVoxel(i, y, S - 1 - t, jit(0x7f8489, i, y, S - 1 - t, 0.07));
+      addVoxel(t, y, i, jit(0x7f8489, t, y, i, 0.07));
+      addVoxel(S - 1 - t, y, i, jit(0x7f8489, S - 1 - t, y, i, 0.07));
+    }
   }
-  // siper kutuları (kapakların arkasına saklanma)
-  const covers = [[60,60],[160,60],[60,160],[160,160],[110,110]];
-  for (const [cx, cz] of covers) {
-    fillBox(cx, 0, cz, 22, 18, 22, 0xb5853f, 0.06);
-    fillBox(cx + 4, 18, cz + 4, 14, 8, 14, 0x9c6b3a, 0.06);
+
+  // === Merkez kale (çok katlı, içine girilebilir) ===
+  const cx0 = S/2 - 35, cz0 = S/2 - 35;
+  block(cx0, cz0, 70, 70, 44, 0x9a958b, 0x6f6a60);
+  ramp(cx0 + 28, 0, cz0 - 18, 14, 18, 24, 0x8a857b, 'z'); // kaleye çıkış rampası
+
+  // === Köşe binaları (tuğla depo & beton) ===
+  warehouse(40, 40, 70, 50, 36, 0xa24b39, 0x6e4326);
+  block(S - 110, 40, 70, 56, 40, 0x8f8a80, 0x645f56);
+  warehouse(40, S - 100, 70, 60, 34, 0x9c5238, 0x6e4326);
+  shed(S - 96, S - 86, 50, 40, 30, 0x9c6b3a, 0x6e4a28);
+
+  // === Siper kutu kümeleri (her biri katmanlı) ===
+  const covers = [[140,160],[300,140],[180,300],[330,330],[S/2-12,90],[90,S/2-12],[S-110,S/2-12]];
+  for (const [px, pz] of covers) {
+    fillBox(px, 0, pz, 24, 16, 24, 0xb5853f, 0.06);
+    fillBox(px + 5, 16, pz + 5, 14, 9, 14, 0x9c6b3a, 0.06);
+    crate(px - 10, 0, pz + 6, 9, 0xa9793a);
   }
-  // rampa / platformlar
-  fillBox(30, 0, 100, 40, 8, 12, 0x9a958b, 0.05);
-  fillBox(170, 0, 130, 40, 14, 12, 0x9a958b, 0.05);
-  // birkaç varil
-  barrel(90, 0, 40, 4, 9, 0xd9622e); barrel(150, 0, 200, 4, 9, 0x2f76b0);
+  // === Rampalı yüksek platformlar (snipe noktaları) ===
+  ramp(110, 0, S - 150, 16, 26, 30, 0x9a958b, 'x');
+  fillBox(136, 0, S - 150, 40, 30, 16, 0x9a958b, 0.05);
+  ramp(S - 160, 0, 110, 16, 26, 30, 0x9a958b, 'z');
+  fillBox(S - 176, 0, 136, 16, 30, 40, 0x9a958b, 0.05);
+
+  // === Dekor: variller, ağaçlar, araç ===
+  barrel(200, 0, 100, 4, 10, 0xd9622e); barrel(280, 0, 360, 4, 10, 0x2f76b0);
+  barrel(120, 0, 250, 4, 10, 0xd94646); barrel(360, 0, 200, 4, 10, 0xc9a23a);
+  tree(250, 250, 10, 14); tree(S - 140, 200, 9, 12); tree(150, S - 140, 9, 13);
+  car(S/2 + 20, 120, 0xb53636); truck(120, S/2 + 30, 0x355f93);
+
   voxMesh.count = activeCount;
   voxMesh.instanceMatrix.needsUpdate = true;
   if (voxMesh.instanceColor) voxMesh.instanceColor.needsUpdate = true;
@@ -1207,7 +1285,7 @@ function die(killer, killerId) {
 }
 function respawn(initial) {
   player.pos.copy(arenaSpawn());
-  player.vel.set(0, 0, 0);
+  player.vel.set(0, 0, 0); player.fly = false;
   LP.hp = LP.maxHp; LP.dead = false;
   LP.shieldUntil = performance.now() + 3000; // canlanınca 3sn kalkan
   updateHealthUI();
