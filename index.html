@@ -52,27 +52,43 @@
   /* Start overlay */
   #overlay {
     position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    background: radial-gradient(circle at 50% 35%, #1d2530, #0a0d12 80%);
-    color: #fff; text-align: center; cursor: pointer;
+    align-items: center; justify-content: center; cursor: pointer; overflow: hidden;
+    color: #fff; text-align: center;
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(255,140,40,.22), transparent 55%),
+      radial-gradient(ellipse at 50% 120%, rgba(50,120,255,.12), transparent 55%),
+      linear-gradient(160deg, #0e141c 0%, #070a0f 100%);
   }
+  /* hareketli ızgara zemin */
+  #overlay::before {
+    content:''; position:absolute; inset:-50%; z-index:-1; opacity:.10;
+    background-image: linear-gradient(#ffcc33 1px, transparent 1px), linear-gradient(90deg, #ffcc33 1px, transparent 1px);
+    background-size: 46px 46px; transform: perspective(420px) rotateX(62deg) translateY(0);
+    animation: grid 7s linear infinite;
+  }
+  @keyframes grid { from { background-position: 0 0; } to { background-position: 0 46px; } }
   #overlay h1 {
-    font-size: 64px; font-weight: 900; letter-spacing: 4px;
-    background: linear-gradient(180deg,#ffd24a,#ff7a18);
+    font-size: 78px; font-weight: 900; letter-spacing: 6px; line-height: .95;
+    background: linear-gradient(180deg,#fff,#ffd24a 45%,#ff7a18);
     -webkit-background-clip: text; background-clip: text; color: transparent;
-    text-shadow: 0 6px 30px rgba(255,120,20,.25);
+    filter: drop-shadow(0 6px 30px rgba(255,120,20,.35));
   }
-  #overlay .tag { color: #8fa3b8; margin-top: 4px; letter-spacing: 6px; font-size: 14px; }
+  #overlay h1 .v2 { display:block; font-size:30px; letter-spacing:14px; margin-top:2px;
+    background:linear-gradient(180deg,#9fb4c9,#5b6b7d); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #overlay .tag { color: #ffcc33; margin-top: 10px; letter-spacing: 8px; font-size: 13px; font-weight:700;
+    border:1px solid rgba(255,204,51,.35); padding:5px 16px; border-radius:20px; background:rgba(255,204,51,.06); }
   #overlay .keys {
-    margin-top: 34px; color: #c7d3df; font-size: 15px; line-height: 2.1;
-    background: rgba(255,255,255,.04); padding: 22px 34px; border-radius: 14px;
-    border: 1px solid rgba(255,255,255,.08);
+    margin-top: 26px; color: #c7d3df; font-size: 14px; line-height: 2.0;
+    background: rgba(255,255,255,.04); padding: 16px 28px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(4px);
   }
   #overlay .keys kbd {
     background: #2b3744; border: 1px solid #44545f; border-bottom-width: 3px;
     border-radius: 6px; padding: 2px 9px; font-family: monospace; color: #fff; margin: 0 2px;
   }
-  #overlay .play { margin-top: 30px; font-size: 20px; color: #ffcc33; font-weight: 700; animation: pulse 1.4s infinite; }
+  #overlay .play { margin-top: 26px; font-size: 20px; color: #ffcc33; font-weight: 800;
+    letter-spacing:1px; animation: pulse 1.4s infinite; }
+  #overlay .credit { position:absolute; bottom:14px; color:#5b6b7d; font-size:11px; letter-spacing:2px; }
   @keyframes pulse { 0%,100%{opacity:.55} 50%{opacity:1} }
 
   #flash {
@@ -184,27 +200,31 @@
 </div>
 
 <div id="overlay">
-  <h1>VOXEL TEARDOWN</h1>
-  <div class="tag" id="ovtag">MOD SEÇ</div>
+  <h1>VOXEL<span class="v2">TEARDOWN</span></h1>
+  <div class="tag" id="ovtag">★ MOD SEÇ ★</div>
   <div id="modes">
-    <div class="mode" data-mode="sandbox"><b>YIKIM</b><span>Sonsuz harita, sandbox yıkım. Tek kişi.</span></div>
-    <div class="mode" data-mode="arena"><b>PvP ARENA</b><span>Sınırlı arena, çok oyunculu savaş. Can & ölüm.</span></div>
+    <div class="mode" data-mode="sandbox"><b>🧨 YIKIM</b><span>Sonsuz harita · sandbox yıkım · tek kişi</span></div>
+    <div class="mode" data-mode="arena"><b>⚔ PvP ARENA</b><span>Sınırlı arena · çok oyunculu · can &amp; ölüm</span></div>
   </div>
   <div class="keys" id="mpbox" style="display:none">
-    <div style="margin-bottom:10px"><b>ÇOK OYUNCULU</b></div>
-    <div class="row" style="justify-content:center">
-      <button onclick="window.__host()">ODA KUR (Host)</button>
-      <input type="text" id="joinCode" placeholder="oda kodu">
-      <button onclick="window.__join()">KATIL</button>
-      <button onclick="window.__solo()">Tek başına oyna</button>
+    <div style="margin-bottom:12px; font-size:16px"><b style="color:#ffcc33">🌐 ÇOK OYUNCULU</b></div>
+    <div class="row" style="justify-content:center; align-items:center">
+      <button onclick="window.__host()">🏠 ODA KUR</button>
+      <span style="opacity:.5">veya</span>
+      <input type="text" id="joinCode" placeholder="0000" maxlength="4" inputmode="numeric" style="text-align:center; letter-spacing:8px; font-size:18px; width:110px">
+      <button onclick="window.__join()">▶ KATIL</button>
     </div>
-    <div id="mpinfo" style="margin-top:10px; font-size:13px; color:#8fa3b8"></div>
+    <div class="row" style="justify-content:center; margin-top:8px">
+      <button onclick="window.__solo()" style="opacity:.8">👤 Tek başına oyna</button>
+    </div>
+    <div id="mpinfo" style="margin-top:12px; font-size:13px; color:#8fa3b8; min-height:20px"></div>
   </div>
   <div class="keys">
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hareket &nbsp;•&nbsp; <kbd>Space</kbd> zıpla &nbsp;•&nbsp; <kbd>Shift</kbd> koş &nbsp;•&nbsp; <kbd>Sol Tık</kbd> ateş</div>
-    <div><kbd>1-8</kbd> silah &nbsp;•&nbsp; <kbd>R</kbd> harita sıfırla &nbsp;•&nbsp; <kbd>F</kbd> uçma &nbsp;•&nbsp; <kbd>O</kbd> ayar &nbsp;•&nbsp; <kbd>P</kbd> admin</div>
+    <div><kbd>1-8</kbd> silah &nbsp;•&nbsp; <kbd>R</kbd> sıfırla &nbsp;•&nbsp; <kbd>F</kbd> uçma &nbsp;•&nbsp; <kbd>O</kbd> ayar &nbsp;•&nbsp; <kbd>P</kbd> admin</div>
   </div>
   <div class="play" id="playhint">▶ BİR MOD SEÇ</div>
+  <div class="credit">VOXEL DESTRUCTION SANDBOX · WEBGL</div>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -933,78 +953,109 @@ const gunBomb = new THREE.Group();
   gunBomb.rotation.set(0.1, 0, 0.2);
 }
 
-// ---- PISTOL ----
+// --- Gerçekçi silah malzemeleri ---
+const M_GUN  = { metalness: 0.95, roughness: 0.30 }; // çelik gövde
+const M_BLK  = { metalness: 0.55, roughness: 0.45 }; // siyah parça
+const M_POLY = { metalness: 0.15, roughness: 0.65 }; // polimer mat
+const M_WOOD = { metalness: 0.0,  roughness: 0.82 }; // ahşap
+const M_TAN  = { metalness: 0.12, roughness: 0.72 }; // tan/FDE
+// yatay namlu (z ekseni boyunca uzanır) — viewmodel helper
+function vbarrel(len, r, c, z, opts) { const m = cyl(r, r, len, c, opts); m.rotation.x = Math.PI / 2; m.position.z = z; return m; }
+function vtube(len, rt, rb, c, opts) { const m = cyl(rt, rb, len, c, opts); m.rotation.x = Math.PI / 2; return m; }
+
+// ---- PISTOL (kompakt tabanca) ----
 const gunPistol = new THREE.Group();
 {
-  const steel = { metalness: 0.85, roughness: 0.3 };
-  gunPistol.add(box(0.06, 0.05, 0.30, 0x2a2d33, 0, 0.02, -0.12, steel)); // gövde/namlu
-  gunPistol.add(box(0.055, 0.14, 0.07, 0x1c1f24, 0, -0.10, 0.06, steel)); // kabza
-  gunPistol.add(box(0.05, 0.04, 0.05, 0x141417, 0, 0.02, -0.28, steel));  // namlu ağzı
+  gunPistol.add(box(0.052, 0.058, 0.24, 0x2b2f35, 0, 0.03, -0.09, M_GUN));   // sürgü
+  gunPistol.add(box(0.05, 0.018, 0.245, 0x1c1f24, 0, 0.062, -0.09, M_BLK));  // sürgü üstü
+  gunPistol.add(vbarrel(0.08, 0.016, 0x141417, -0.22, M_GUN));                // namlu ağzı
+  gunPistol.add(box(0.046, 0.02, 0.22, 0x202327, 0, -0.005, -0.07, M_POLY)); // çerçeve
+  const grip = box(0.05, 0.15, 0.075, 0x16181b, 0, -0.10, 0.05, M_POLY); grip.rotation.x = 0.18; gunPistol.add(grip); // kabza
+  gunPistol.add(box(0.046, 0.06, 0.018, 0x101113, 0, -0.085, -0.04, M_BLK)); // tetik korkuluğu ön
+  gunPistol.add(box(0.012, 0.016, 0.012, 0x0a0a0c, 0, 0.078, -0.18));        // ön nişangah
+  gunPistol.add(box(0.03, 0.016, 0.012, 0x0a0a0c, 0, 0.078, 0.0));           // arka nişangah
   gunPistol.rotation.set(0.02, 0, 0);
 }
-// ---- AK-47 ----
+// ---- AK-47 (ahşap kundaklı) ----
 const gunAK = new THREE.Group();
 {
-  const steel = { metalness: 0.7, roughness: 0.4 };
-  const wood = { metalness: 0.0, roughness: 0.85 };
-  const bar = cyl(0.022, 0.022, 0.62, 0x1f2226, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.03, -0.34); gunAK.add(bar);
-  gunAK.add(box(0.07, 0.08, 0.34, 0x3a3f46, 0, 0, -0.05, steel)); // mekanizma
-  gunAK.add(box(0.06, 0.07, 0.22, 0x6e4a26, 0, -0.01, 0.22, wood)); // dipçik
-  // kavisli şarjör
-  const mag = box(0.05, 0.16, 0.09, 0x2a2d33, 0, -0.12, -0.02, steel); mag.rotation.x = -0.5; gunAK.add(mag);
-  gunAK.add(box(0.045, 0.11, 0.06, 0x1c1f24, 0, -0.10, 0.10, steel)); // kabza
-  gunAK.add(box(0.05, 0.06, 0.10, 0x6e4a26, 0, -0.06, -0.20, wood)); // ön kabza
+  gunAK.add(box(0.058, 0.072, 0.30, 0x33373d, 0, 0.005, -0.06, M_GUN));      // mekanizma kutusu
+  gunAK.add(vbarrel(0.40, 0.013, 0x1b1d21, -0.40, M_GUN));                    // uzun namlu
+  { const gt = vtube(0.26, 0.016, 0.016, 0x2a2d33, M_BLK); gt.position.set(0, 0.045, -0.30); gunAK.add(gt); } // gaz tüpü
+  gunAK.add(box(0.018, 0.05, 0.02, 0x141417, 0, 0.07, -0.30, M_BLK));        // ön nişangah kulesi
+  gunAK.add(box(0.05, 0.075, 0.20, 0x6e4a26, 0, 0.0, -0.22, M_WOOD));        // ahşap ön kundak
+  // kavisli şarjör (3 parçalı yaklaşım)
+  const mag = new THREE.Group();
+  const m1 = box(0.044, 0.10, 0.08, 0x2a2d33, 0, -0.05, 0, M_BLK);
+  const m2 = box(0.044, 0.09, 0.075, 0x2a2d33, 0, -0.13, 0.02, M_BLK); m2.rotation.x = 0.35;
+  const m3 = box(0.044, 0.07, 0.07, 0x2a2d33, 0, -0.20, 0.07, M_BLK); m3.rotation.x = 0.6;
+  mag.add(m1, m2, m3); mag.position.set(0, -0.05, -0.02); gunAK.add(mag);
+  gunAK.add(box(0.044, 0.12, 0.062, 0x141417, 0, -0.10, 0.08, M_POLY));      // pistol kabza
+  const stock = box(0.05, 0.078, 0.26, 0x6e4a26, 0, 0.0, 0.23, M_WOOD); gunAK.add(stock); // ahşap dipçik
 }
-// ---- UZI ----
+// ---- UZI (SMG) ----
 const gunUzi = new THREE.Group();
 {
-  const steel = { metalness: 0.8, roughness: 0.35 };
-  gunUzi.add(box(0.06, 0.10, 0.22, 0x26292e, 0, 0, -0.04, steel)); // gövde
-  const bar = cyl(0.018, 0.018, 0.20, 0x141417, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.02, -0.24); gunUzi.add(bar);
-  gunUzi.add(box(0.05, 0.18, 0.06, 0x1c1f24, 0, -0.13, 0.0, steel)); // uzun şarjör/kabza
-  gunUzi.rotation.set(0.04, 0, 0);
+  gunUzi.add(box(0.058, 0.092, 0.24, 0x26292e, 0, 0.0, -0.05, M_GUN));       // ana gövde
+  gunUzi.add(box(0.05, 0.02, 0.10, 0x1c1f24, 0, 0.055, -0.10, M_BLK));       // üst kapak/şarjör boşaltma
+  gunUzi.add(vbarrel(0.18, 0.014, 0x141417, -0.24, M_GUN));                   // kısa namlu
+  gunUzi.add(box(0.05, 0.20, 0.05, 0x2a2d33, 0, -0.16, -0.02, M_BLK));       // kabza içinden uzun şarjör
+  gunUzi.add(box(0.05, 0.07, 0.055, 0x141417, 0, -0.06, -0.02, M_POLY));     // kabza
+  gunUzi.add(box(0.04, 0.05, 0.10, 0x1c1f24, 0, 0.0, 0.13, M_BLK));          // katlanır dipçik kütüğü
+  gunUzi.rotation.set(0.03, 0, 0);
 }
 
-// ---- AWP (keskin nişancı, dürbünlü) ----
+// ---- AWP (keskin nişancı, dürbünlü, bipodlu) ----
 const gunAWP = new THREE.Group();
 {
-  const steel = { metalness: 0.7, roughness: 0.35 };
-  const green = { metalness: 0.2, roughness: 0.7 };
-  const bar = cyl(0.020, 0.022, 0.95, 0x1b1d21, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.03, -0.46); gunAWP.add(bar);
-  gunAWP.add(box(0.06, 0.075, 0.40, 0x2f5d3a, 0, 0, -0.02, green)); // gövde
-  gunAWP.add(box(0.06, 0.07, 0.26, 0x2f5d3a, 0, -0.005, 0.26, green)); // dipçik
-  // dürbün
-  const scope = cyl(0.035, 0.035, 0.26, 0x111317, steel); scope.rotation.x = Math.PI/2; scope.position.set(0, 0.10, -0.05); gunAWP.add(scope);
-  gunAWP.add(box(0.02, 0.05, 0.02, 0x111317, 0, 0.055, -0.05)); // dürbün ayağı
-  const mag = box(0.045, 0.10, 0.07, 0x26292e, 0, -0.10, -0.02, steel); gunAWP.add(mag);
-  gunAWP.add(box(0.045, 0.10, 0.06, 0x1c1f24, 0, -0.10, 0.10, steel)); // kabza
-  gunAWP.add(box(0.05, 0.025, 0.16, 0x141417, 0, -0.05, -0.40, steel)); // bipod gövde
+  gunAWP.add(vbarrel(0.78, 0.018, 0x16181b, -0.48, M_GUN));                  // uzun ağır namlu
+  gunAWP.add(vbarrel(0.10, 0.026, 0x101113, -0.85, M_BLK));                  // ağız freni
+  gunAWP.add(box(0.058, 0.085, 0.46, 0x2c5238, 0, 0, -0.04, M_POLY));        // gövde (yeşil polimer)
+  gunAWP.add(box(0.056, 0.10, 0.30, 0x2c5238, 0, -0.01, 0.30, M_POLY));      // arkalık/dipçik
+  gunAWP.add(box(0.05, 0.06, 0.06, 0x244530, 0, -0.07, 0.46, M_POLY));       // omuz pabucu
+  // dürbün: tüp + lens + kuleler
+  const scope = vtube(0.30, 0.034, 0.034, 0x0e0f12, M_BLK); scope.position.set(0, 0.115, -0.06); gunAWP.add(scope);
+  const lens = cyl(0.036, 0.036, 0.02, 0x2a3550, { metalness: 0.9, roughness: 0.1 }); lens.rotation.x = Math.PI/2; lens.position.set(0, 0.115, -0.215); gunAWP.add(lens);
+  { const tw = cyl(0.018, 0.018, 0.05, 0x1a1c20, M_BLK); tw.position.set(0, 0.155, -0.06); gunAWP.add(tw); } // ayar kulesi
+  gunAWP.add(box(0.018, 0.06, 0.02, 0x16181b, -0.005, 0.055, -0.20, M_BLK)); // ön dürbün ayağı
+  gunAWP.add(box(0.018, 0.06, 0.02, 0x16181b, -0.005, 0.055, 0.06, M_BLK));  // arka dürbün ayağı
+  const mag = box(0.044, 0.085, 0.07, 0x1c1f24, 0, -0.085, -0.02, M_BLK); gunAWP.add(mag);
+  gunAWP.add(box(0.046, 0.12, 0.06, 0x161616, 0, -0.10, 0.12, M_POLY));      // kabza
+  // bipod (V şeklinde iki bacak)
+  const l1 = box(0.012, 0.16, 0.012, 0x101113, -0.04, -0.10, -0.62, M_BLK); l1.rotation.z = 0.3; gunAWP.add(l1);
+  const l2 = box(0.012, 0.16, 0.012, 0x101113, 0.04, -0.10, -0.62, M_BLK);  l2.rotation.z = -0.3; gunAWP.add(l2);
 }
-// ---- G3 (muharebe tüfeği) ----
+// ---- G3 (H&K muharebe tüfeği) ----
 const gunG3 = new THREE.Group();
 {
-  const steel = { metalness: 0.75, roughness: 0.35 };
-  const blk = { metalness: 0.3, roughness: 0.7 };
-  const bar = cyl(0.020, 0.020, 0.58, 0x18191d, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.02, -0.34); gunG3.add(bar);
-  gunG3.add(box(0.065, 0.09, 0.40, 0x232529, 0, 0, -0.03, blk)); // gövde
-  gunG3.add(box(0.06, 0.075, 0.24, 0x232529, 0, -0.005, 0.24, blk)); // dipçik
-  gunG3.add(box(0.05, 0.075, 0.20, 0x18191d, 0, -0.02, -0.22, blk)); // ön el kundağı
-  const mag = box(0.05, 0.20, 0.08, 0x141417, 0, -0.14, -0.02, steel); mag.rotation.x = 0.1; gunG3.add(mag); // uzun şarjör
-  gunG3.add(box(0.05, 0.11, 0.06, 0x1c1f24, 0, -0.10, 0.08, steel)); // kabza
+  gunG3.add(vbarrel(0.52, 0.016, 0x16181b, -0.40, M_GUN));                   // namlu
+  gunG3.add(box(0.06, 0.088, 0.34, 0x202225, 0, 0.0, -0.05, M_GUN));         // mekanizma
+  gunG3.add(box(0.05, 0.07, 0.26, 0x18191c, 0, -0.01, -0.30, M_POLY));       // ön el kundağı (slim)
+  const drum = cyl(0.03, 0.03, 0.03, 0x141417, M_BLK); drum.rotation.x = Math.PI/2; drum.position.set(0, 0.06, -0.30); gunG3.add(drum); // tambur nişangah
+  gunG3.add(box(0.05, 0.10, 0.24, 0x18191c, 0, -0.005, 0.26, M_POLY));       // dipçik (sabit)
+  gunG3.add(box(0.046, 0.10, 0.05, 0x18191c, 0, -0.075, 0.42, M_POLY));      // omuz pabucu
+  // uzun düz şarjör (G3 imzası)
+  const mag = box(0.046, 0.22, 0.08, 0x202225, 0, -0.15, -0.04, M_GUN); mag.rotation.x = 0.06; gunG3.add(mag);
+  gunG3.add(box(0.046, 0.12, 0.062, 0x161616, 0, -0.10, 0.08, M_POLY));      // kabza
 }
-// ---- HK416 (hücum tüfeği) ----
+// ---- HK416 (modern hücum tüfeği, raylı) ----
 const gunHK = new THREE.Group();
 {
-  const steel = { metalness: 0.7, roughness: 0.4 };
-  const tan = { metalness: 0.15, roughness: 0.8 };
-  const bar = cyl(0.019, 0.019, 0.50, 0x1b1d21, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.025, -0.32); gunHK.add(bar);
-  gunHK.add(box(0.06, 0.085, 0.36, 0x3a3a36, 0, 0, -0.04, tan)); // gövde
-  // ray kundak (delikli his için ince kutular)
-  gunHK.add(box(0.05, 0.06, 0.26, 0x2c2c28, 0, 0.01, -0.22, tan));
-  gunHK.add(box(0.055, 0.07, 0.20, 0x2c2c28, 0, -0.005, 0.22, tan)); // ayarlı dipçik
-  const mag = box(0.05, 0.15, 0.08, 0x26292e, 0, -0.11, -0.02, steel); mag.rotation.x = -0.05; gunHK.add(mag);
-  gunHK.add(box(0.05, 0.10, 0.06, 0x1c1f24, 0, -0.09, 0.08, steel)); // kabza
-  gunHK.add(box(0.02, 0.045, 0.02, 0x111317, 0, 0.075, -0.30)); // nişangah
+  gunHK.add(vbarrel(0.42, 0.015, 0x18191c, -0.36, M_GUN));                   // namlu
+  gunHK.add(vbarrel(0.07, 0.024, 0x101113, -0.55, M_BLK));                   // alev gizleyici
+  gunHK.add(box(0.056, 0.08, 0.30, 0x2a2a27, 0, 0.0, -0.04, M_TAN));         // mekanizma (FDE)
+  // raylı ön kundak (üstte picatinny çentikleri)
+  const hg = box(0.05, 0.062, 0.28, 0x26261f, 0, 0.0, -0.26, M_TAN); gunHK.add(hg);
+  for (let i = 0; i < 6; i++) gunHK.add(box(0.05, 0.008, 0.012, 0x141414, 0, 0.036, -0.16 - i * 0.035, M_BLK)); // ray çentikleri
+  // üst picatinny ray + nişan
+  gunHK.add(box(0.03, 0.012, 0.34, 0x18181a, 0, 0.046, -0.10, M_BLK));
+  gunHK.add(box(0.026, 0.03, 0.05, 0x101012, 0, 0.066, 0.02, M_BLK));        // arka katlanır nişangah
+  gunHK.add(box(0.018, 0.04, 0.018, 0x101012, 0, 0.07, -0.30, M_BLK));       // ön nişangah
+  // teleskopik dipçik
+  { const st = vtube(0.10, 0.016, 0.016, 0x141417, M_BLK); st.position.set(0, -0.005, 0.18); gunHK.add(st); }
+  gunHK.add(box(0.06, 0.10, 0.12, 0x222220, 0, -0.01, 0.28, M_TAN));         // omuz pabucu
+  const mag = box(0.046, 0.16, 0.08, 0x26262a, 0, -0.115, -0.02, M_GUN); mag.rotation.x = -0.04; gunHK.add(mag);
+  gunHK.add(box(0.046, 0.11, 0.06, 0x161616, 0, -0.085, 0.08, M_POLY));      // kabza
 }
 
 const VM_MODELS = [gunPistol, gunAK, gunUzi, gunShotgun, gunBomb, gunAWP, gunG3, gunHK];
@@ -1249,51 +1300,86 @@ let panelOpen = false;
 //  SES MOTORU (WebAudio ile sentez — harici dosya yok)
 // ---------------------------------------------------------------------------
 const SFX = (() => {
-  let ctx = null;
-  function ac() { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); return ctx; }
+  let ctx = null, master = null, comp = null, verbIn = null;
+  let noiseBuf = null, irBuf = null;
+  function ac() {
+    if (ctx) return ctx;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // master zinciri: gain -> kompresör -> çıkış (patlamalarda kırpılmayı önler)
+    master = ctx.createGain(); master.gain.value = 0.9;
+    comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.knee.value = 24; comp.ratio.value = 7; comp.attack.value = 0.002; comp.release.value = 0.18;
+    master.connect(comp); comp.connect(ctx.destination);
+    // basit yankı (convolver, sentetik IR ile)
+    const conv = ctx.createConvolver(); irBuf = makeIR(1.1, 2.4); conv.buffer = irBuf;
+    verbIn = ctx.createGain(); verbIn.gain.value = 0.22;
+    const verbOut = ctx.createGain(); verbOut.gain.value = 0.9;
+    verbIn.connect(conv); conv.connect(verbOut); verbOut.connect(master);
+    return ctx;
+  }
   function resume() { try { ac().resume(); } catch (e) {} }
-  // beyaz gürültü tamponu (silah patlaması / patlama için)
-  let noiseBuf = null;
+  function makeIR(dur, decay) {
+    const cc = ctx; const len = (cc.sampleRate * dur) | 0;
+    const buf = cc.createBuffer(2, len, cc.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
+    return buf;
+  }
   function noise() {
     const c = ac();
-    if (!noiseBuf) {
-      noiseBuf = c.createBuffer(1, c.sampleRate * 1, c.sampleRate);
-      const d = noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    }
+    if (!noiseBuf) { noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
     const s = c.createBufferSource(); s.buffer = noiseBuf; return s;
   }
-  function env(g, t, peak, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
-  // patlama benzeri ses: gürültü + low-pass + düşen frekans
-  function blast(t, dur, cutoff, peak) {
-    const c = ac(), n = noise(), f = c.createBiquadFilter(), g = c.createGain();
-    f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(cutoff * 0.25, t + dur);
-    env(g, t, peak * SETTINGS.vol, dur);
-    n.connect(f); f.connect(g); g.connect(c.destination); n.start(t); n.stop(t + dur + 0.05);
+  // ortak yönlendirme: kuru -> master, ıslak -> reverb
+  function route(node, wet) { node.connect(master); if (wet > 0) { const w = ac().createGain(); w.gain.value = wet; node.connect(w); w.connect(verbIn); } }
+  function env(g, t, peak, attack, dur) {
+    peak *= SETTINGS.vol;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   }
-  function tone(t, freq, freq2, dur, peak, type = 'square') {
+  // filtrelenmiş gürültü patlaması (silah/patlama gövdesi)
+  function blast(t, dur, cutoff, peak, q, wet, type = 'lowpass') {
+    const c = ac(), n = noise(), f = c.createBiquadFilter(), g = c.createGain();
+    f.type = type; f.Q.value = q || 0.7;
+    f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(Math.max(120, cutoff * 0.28), t + dur);
+    env(g, t, peak, 0.003, dur);
+    n.connect(f); f.connect(g); route(g, wet || 0);
+    n.start(t); n.stop(t + dur + 0.05);
+  }
+  // keskin transient "çıt" (mermi çıkışı)
+  function crack(t, peak) {
+    const c = ac(), n = noise(), f = c.createBiquadFilter(), g = c.createGain();
+    f.type = 'highpass'; f.frequency.value = 3500;
+    env(g, t, peak, 0.0005, 0.03);
+    n.connect(f); f.connect(g); route(g, 0.1); n.start(t); n.stop(t + 0.05);
+  }
+  function tone(t, freq, freq2, dur, peak, type = 'sine', wet) {
     const c = ac(), o = c.createOscillator(), g = c.createGain();
     o.type = type; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, freq2), t + dur);
-    env(g, t, peak * SETTINGS.vol, dur);
-    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.05);
+    env(g, t, peak, 0.004, dur);
+    o.connect(g); route(g, wet || 0); o.start(t); o.stop(t + dur + 0.05);
   }
   return {
     resume,
     shoot(w) {
       const t = ac().currentTime, k = w.kind, n = w.name;
-      if (k === 'sniper' || n === 'AWP') { blast(t, 0.28, 4000, 0.9); tone(t, 220, 60, 0.18, 0.4, 'sawtooth'); }
-      else if (n === 'POMPALI') { blast(t, 0.3, 2600, 1.0); }
-      else if (n === 'G3') { blast(t, 0.14, 3600, 0.8); tone(t, 180, 70, 0.08, 0.3, 'square'); }
-      else if (n === 'AK-47' || n === 'HK416') { blast(t, 0.10, 3200, 0.65); }
-      else if (n === 'UZI') { blast(t, 0.06, 2800, 0.45); }
-      else if (k === 'bomb') { tone(t, 320, 120, 0.12, 0.4, 'sine'); } // fırlatma "tuf"
-      else { blast(t, 0.09, 3000, 0.55); } // pistol
+      // her atış: transient çıt + gövde + (büyük silahlarda) düşük gümbürtü
+      if (k === 'sniper' || n === 'AWP') { crack(t, 1.0); blast(t, 0.34, 5200, 1.0, 1.2, 0.5); tone(t, 150, 48, 0.22, 0.55, 'sawtooth', 0.3); }
+      else if (n === 'POMPALI') { crack(t, 0.8); blast(t, 0.36, 2400, 1.1, 0.6, 0.45); tone(t, 110, 40, 0.18, 0.5, 'sine'); }
+      else if (n === 'G3')      { crack(t, 0.7); blast(t, 0.16, 4200, 0.85, 1.0, 0.28); tone(t, 150, 55, 0.09, 0.4, 'square'); }
+      else if (n === 'HK416')   { crack(t, 0.6); blast(t, 0.11, 3800, 0.7, 1.1, 0.2); }
+      else if (n === 'AK-47')   { crack(t, 0.6); blast(t, 0.12, 3400, 0.72, 0.9, 0.22); tone(t, 130, 60, 0.06, 0.3, 'square'); }
+      else if (n === 'UZI')     { crack(t, 0.4); blast(t, 0.06, 3000, 0.5, 1.0, 0.12); }
+      else if (k === 'bomb')    { tone(t, 360, 130, 0.14, 0.45, 'triangle'); blast(t, 0.05, 1800, 0.25); } // fırlatma
+      else                      { crack(t, 0.55); blast(t, 0.10, 3200, 0.6, 0.8, 0.18); } // pistol
     },
-    explosion() { const t = ac().currentTime; blast(t, 0.7, 1400, 1.2); tone(t, 90, 30, 0.5, 0.6, 'sawtooth'); },
-    hit() { tone(ac().currentTime, 1400, 900, 0.06, 0.5, 'square'); }, // isabet "tık"
-    hurt() { tone(ac().currentTime, 180, 90, 0.18, 0.5, 'sawtooth'); },
-    death() { const t = ac().currentTime; tone(t, 300, 60, 0.6, 0.6, 'sawtooth'); blast(t, 0.4, 1000, 0.5); },
-    respawn() { const t = ac().currentTime; tone(t, 400, 800, 0.18, 0.4, 'sine'); tone(t + 0.12, 700, 1100, 0.18, 0.4, 'sine'); },
+    explosion() { const t = ac().currentTime; crack(t, 0.7); blast(t, 0.85, 1600, 1.3, 0.5, 0.7); tone(t, 80, 26, 0.6, 0.7, 'sawtooth', 0.4); tone(t + 0.02, 55, 20, 0.5, 0.5, 'sine'); },
+    hit()    { const t = ac().currentTime; tone(t, 1700, 1100, 0.05, 0.45, 'square'); tone(t + 0.015, 2200, 1500, 0.04, 0.3, 'sine'); }, // çift tonlu isabet
+    hurt()   { const t = ac().currentTime; blast(t, 0.12, 900, 0.5, 0.7, 0.1); tone(t, 160, 80, 0.16, 0.4, 'sawtooth'); },
+    death()  { const t = ac().currentTime; tone(t, 320, 50, 0.7, 0.6, 'sawtooth', 0.4); blast(t, 0.5, 1100, 0.55, 0.5, 0.5); },
+    respawn(){ const t = ac().currentTime; tone(t, 440, 660, 0.14, 0.4, 'sine', 0.3); tone(t + 0.12, 660, 990, 0.18, 0.45, 'sine', 0.3); },
   };
 })();
 
@@ -1451,24 +1537,29 @@ function removeAvatar(id) {
 
 // --- Multiplayer (PeerJS, host=relay yıldız topoloji) ---
 const net = { peer: null, host: false, id: null, conns: [], hostConn: null, solo: false };
-function netSetup(asHost) {
-  net.peer = new Peer();
+const ROOM_PREFIX = 'voxeltd-arena-'; // 4 haneli koda eklenen benzersiz ön ek
+function netSetup(asHost, code) {
   net.host = asHost;
+  net.roomCode = code;
+  net.peer = asHost ? new Peer(ROOM_PREFIX + code) : new Peer();
   net.peer.on('open', id => {
     net.id = id;
     if (asHost) {
-      document.getElementById('mpinfo').innerHTML = 'ODA KODU: <b style="color:#ffcc33">' + id + '</b><br>Arkadaşına bu kodu ver, sonra başlat.';
-      document.getElementById('playhint').textContent = '▶ BAŞLAT (oda: ' + id.slice(0, 6) + '...)';
+      document.getElementById('mpinfo').innerHTML = 'ODA KODU: <b style="color:#ffcc33; font-size:28px; letter-spacing:6px">' + code + '</b><br>Arkadaşına bu 4 haneli kodu ver.';
+      document.getElementById('playhint').textContent = '▶ BAŞLAT (oda ' + code + ')';
       startGame();
     } else {
-      const code = document.getElementById('joinCode').value.trim();
-      const c = net.peer.connect(code, { reliable: false });
+      const c = net.peer.connect(ROOM_PREFIX + code, { reliable: false });
       net.hostConn = c;
       setupConn(c, true);
     }
   });
   net.peer.on('connection', c => { net.conns.push(c); setupConn(c, false); });
-  net.peer.on('error', e => { document.getElementById('mpinfo').textContent = 'Bağlantı hatası: ' + e.type; });
+  net.peer.on('error', e => {
+    const msg = e.type === 'unavailable-id' ? 'Bu oda zaten var, tekrar dene.' :
+                e.type === 'peer-unavailable' ? 'Oda bulunamadı — kodu kontrol et.' : 'Bağlantı hatası: ' + e.type;
+    document.getElementById('mpinfo').textContent = msg;
+  });
 }
 function setupConn(c, isToHost) {
   c.on('open', () => {
@@ -1508,10 +1599,15 @@ net.broadcast = (msg) => {
   if (net.host) { for (const c of net.conns) if (c.open) c.send(msg); }
   else if (net.hostConn && net.hostConn.open) net.hostConn.send(msg);
 };
-window.__host = () => { document.getElementById('mpinfo').textContent = 'Oda kuruluyor...'; netSetup(true); };
+window.__host = () => {
+  const code = String(1000 + Math.floor(Math.random() * 9000)); // 4 haneli
+  document.getElementById('mpinfo').textContent = 'Oda kuruluyor...';
+  netSetup(true, code);
+};
 window.__join = () => {
-  if (!document.getElementById('joinCode').value.trim()) { document.getElementById('mpinfo').textContent = 'Oda kodu gir!'; return; }
-  document.getElementById('mpinfo').textContent = 'Bağlanılıyor...'; netSetup(false);
+  const code = (document.getElementById('joinCode').value.trim().match(/\d/g) || []).join('').slice(0, 4);
+  if (code.length !== 4) { document.getElementById('mpinfo').textContent = '4 haneli oda kodu gir!'; return; }
+  document.getElementById('mpinfo').textContent = 'Bağlanılıyor...'; netSetup(false, code);
 };
 
 // uzak oyunculara nişan alıp vurma kontrolü (fire içinden çağrılır)
