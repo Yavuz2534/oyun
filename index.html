@@ -149,6 +149,9 @@
   <div class="w" data-w="2"><span class="k">3</span><b>UZI</b>çok hızlı</div>
   <div class="w" data-w="3"><span class="k">4</span><b>POMPALI</b>güçlü</div>
   <div class="w" data-w="4"><span class="k">5</span><b>BOMBA</b>fırlat</div>
+  <div class="w" data-w="5"><span class="k">6</span><b>AWP</b>sniper</div>
+  <div class="w" data-w="6"><span class="k">7</span><b>G3</b>ağır</div>
+  <div class="w" data-w="7"><span class="k">8</span><b>HK416</b>otomatik</div>
 </div>
 
 <div id="health"><div class="bar"><div class="fill" id="hpfill"></div></div><div class="txt" id="hptxt">100 HP</div></div>
@@ -162,6 +165,7 @@
   <h2>⚙ Ayarlar</h2>
   <label>Fare hassasiyeti <input type="range" id="setSens" min="0.5" max="4" step="0.1" value="1"></label>
   <label>FOV <input type="range" id="setFov" min="60" max="100" step="1" value="72"></label>
+  <label>Ses seviyesi <input type="range" id="setVol" min="0" max="1" step="0.05" value="0.6"></label>
   <label>İsim <input type="text" id="setName" maxlength="12"></label>
 </div>
 
@@ -198,7 +202,7 @@
   </div>
   <div class="keys">
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hareket &nbsp;•&nbsp; <kbd>Space</kbd> zıpla &nbsp;•&nbsp; <kbd>Shift</kbd> koş &nbsp;•&nbsp; <kbd>Sol Tık</kbd> ateş</div>
-    <div><kbd>1-5</kbd> silah &nbsp;•&nbsp; <kbd>R</kbd> harita sıfırla &nbsp;•&nbsp; <kbd>F</kbd> uçma &nbsp;•&nbsp; <kbd>O</kbd> ayar &nbsp;•&nbsp; <kbd>P</kbd> admin</div>
+    <div><kbd>1-8</kbd> silah &nbsp;•&nbsp; <kbd>R</kbd> harita sıfırla &nbsp;•&nbsp; <kbd>F</kbd> uçma &nbsp;•&nbsp; <kbd>O</kbd> ayar &nbsp;•&nbsp; <kbd>P</kbd> admin</div>
   </div>
   <div class="play" id="playhint">▶ BİR MOD SEÇ</div>
 </div>
@@ -722,6 +726,7 @@ function explodeAt(wx, wy, wz, radiusM) {
   destroySphere(cx, cy, cz, radiusM / VOX, true, null);
   spawnExplosion(wx, wy, wz, 1.6);
   muzzleFlash(0.7);
+  SFX.explosion();
   // PvP: patlama yarıçapındaki oyunculara hasar (çeyrek can)
   if (GAME.mode === 'arena') {
     const bp = new THREE.Vector3(wx, wy, wz), R = radiusM + 1.5;
@@ -843,6 +848,9 @@ const WEAPONS = [
   { name: 'UZI',    hint: 'Çok hızlı — düşük hasar',      radius: 0.26, debris: true, rof: 0.06, reach: Infinity, kind: 'gun',  dmg: 9,  auto: true  },
   { name: 'POMPALI',hint: 'Yavaş — güçlü yakın dövüş',    radius: 0.55, debris: true, rof: 0.80, reach: Infinity, kind: 'gun',  dmg: 48, auto: false },
   { name: 'BOMBA',  hint: 'Fırlat — çeyrek can hasar',    radius: 2.6,  debris: true, rof: 1.10, reach: Infinity, kind: 'bomb', dmg: 25, auto: false },
+  { name: 'AWP',    hint: 'Keskin nişancı — tek atış öldürür', radius: 0.40, debris: true, rof: 1.60, reach: Infinity, kind: 'sniper', dmg: 110, auto: false },
+  { name: 'G3',     hint: 'Muharebe tüfeği — ağır hasar',  radius: 0.36, debris: true, rof: 0.40, reach: Infinity, kind: 'gun',  dmg: 38, auto: false },
+  { name: 'HK416',  hint: 'Hücum tüfeği — tam otomatik',   radius: 0.34, debris: true, rof: 0.10, reach: Infinity, kind: 'gun',  dmg: 18, auto: true  },
 ];
 let curWeapon = 0;
 let fireTimer = 0;
@@ -957,7 +965,49 @@ const gunUzi = new THREE.Group();
   gunUzi.rotation.set(0.04, 0, 0);
 }
 
-const VM_MODELS = [gunPistol, gunAK, gunUzi, gunShotgun, gunBomb];
+// ---- AWP (keskin nişancı, dürbünlü) ----
+const gunAWP = new THREE.Group();
+{
+  const steel = { metalness: 0.7, roughness: 0.35 };
+  const green = { metalness: 0.2, roughness: 0.7 };
+  const bar = cyl(0.020, 0.022, 0.95, 0x1b1d21, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.03, -0.46); gunAWP.add(bar);
+  gunAWP.add(box(0.06, 0.075, 0.40, 0x2f5d3a, 0, 0, -0.02, green)); // gövde
+  gunAWP.add(box(0.06, 0.07, 0.26, 0x2f5d3a, 0, -0.005, 0.26, green)); // dipçik
+  // dürbün
+  const scope = cyl(0.035, 0.035, 0.26, 0x111317, steel); scope.rotation.x = Math.PI/2; scope.position.set(0, 0.10, -0.05); gunAWP.add(scope);
+  gunAWP.add(box(0.02, 0.05, 0.02, 0x111317, 0, 0.055, -0.05)); // dürbün ayağı
+  const mag = box(0.045, 0.10, 0.07, 0x26292e, 0, -0.10, -0.02, steel); gunAWP.add(mag);
+  gunAWP.add(box(0.045, 0.10, 0.06, 0x1c1f24, 0, -0.10, 0.10, steel)); // kabza
+  gunAWP.add(box(0.05, 0.025, 0.16, 0x141417, 0, -0.05, -0.40, steel)); // bipod gövde
+}
+// ---- G3 (muharebe tüfeği) ----
+const gunG3 = new THREE.Group();
+{
+  const steel = { metalness: 0.75, roughness: 0.35 };
+  const blk = { metalness: 0.3, roughness: 0.7 };
+  const bar = cyl(0.020, 0.020, 0.58, 0x18191d, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.02, -0.34); gunG3.add(bar);
+  gunG3.add(box(0.065, 0.09, 0.40, 0x232529, 0, 0, -0.03, blk)); // gövde
+  gunG3.add(box(0.06, 0.075, 0.24, 0x232529, 0, -0.005, 0.24, blk)); // dipçik
+  gunG3.add(box(0.05, 0.075, 0.20, 0x18191d, 0, -0.02, -0.22, blk)); // ön el kundağı
+  const mag = box(0.05, 0.20, 0.08, 0x141417, 0, -0.14, -0.02, steel); mag.rotation.x = 0.1; gunG3.add(mag); // uzun şarjör
+  gunG3.add(box(0.05, 0.11, 0.06, 0x1c1f24, 0, -0.10, 0.08, steel)); // kabza
+}
+// ---- HK416 (hücum tüfeği) ----
+const gunHK = new THREE.Group();
+{
+  const steel = { metalness: 0.7, roughness: 0.4 };
+  const tan = { metalness: 0.15, roughness: 0.8 };
+  const bar = cyl(0.019, 0.019, 0.50, 0x1b1d21, steel); bar.rotation.x = Math.PI/2; bar.position.set(0, 0.025, -0.32); gunHK.add(bar);
+  gunHK.add(box(0.06, 0.085, 0.36, 0x3a3a36, 0, 0, -0.04, tan)); // gövde
+  // ray kundak (delikli his için ince kutular)
+  gunHK.add(box(0.05, 0.06, 0.26, 0x2c2c28, 0, 0.01, -0.22, tan));
+  gunHK.add(box(0.055, 0.07, 0.20, 0x2c2c28, 0, -0.005, 0.22, tan)); // ayarlı dipçik
+  const mag = box(0.05, 0.15, 0.08, 0x26292e, 0, -0.11, -0.02, steel); mag.rotation.x = -0.05; gunHK.add(mag);
+  gunHK.add(box(0.05, 0.10, 0.06, 0x1c1f24, 0, -0.09, 0.08, steel)); // kabza
+  gunHK.add(box(0.02, 0.045, 0.02, 0x111317, 0, 0.075, -0.30)); // nişangah
+}
+
+const VM_MODELS = [gunPistol, gunAK, gunUzi, gunShotgun, gunBomb, gunAWP, gunG3, gunHK];
 VM_MODELS.forEach(g => { g.visible = false; vmRoot.add(g); });
 
 const vm = { kick: 0, bob: 0 }; // geri tepme ve yürüyüş sallanması
@@ -984,8 +1034,9 @@ function fire() {
   // PvP: hitscan silahlarda oyuncu vuruşu (bomba patlamada hasar verir)
   if (w.kind !== 'bomb') checkPlayerHit(dir, w.reach, w.dmg);
 
+  SFX.shoot(w);
   // geri tepme / savurma animasyonu ve efektler
-  vm.kick = Math.min(0.6, vm.kick + (w.kind === 'rocket' ? 0.4 : w.kind === 'melee' ? 0.75 : w.kind === 'bomb' ? 0.5 : 0.24));
+  vm.kick = Math.min(0.6, vm.kick + (w.kind === 'sniper' ? 0.5 : w.kind === 'bomb' ? 0.5 : 0.24));
 
   // BOMBA: fırlat (parçalama anında değil, fitil bitince)
   if (w.kind === 'bomb') { throwBomb(camera.position, dir); return; }
@@ -1055,6 +1106,7 @@ document.querySelectorAll('#modes .mode').forEach(el => {
 
 function startGame() {
   GAME.started = true;
+  SFX.resume();
   if (GAME.mode === 'arena') {
     generateArena();
     document.getElementById('health').style.display = 'block';
@@ -1091,6 +1143,9 @@ addEventListener('keydown', e => {
   if (e.code === 'Digit3') selectWeapon(2);
   if (e.code === 'Digit4') selectWeapon(3);
   if (e.code === 'Digit5') selectWeapon(4);
+  if (e.code === 'Digit6') selectWeapon(5);
+  if (e.code === 'Digit7') selectWeapon(6);
+  if (e.code === 'Digit8') selectWeapon(7);
   if (e.code === 'KeyR') {
     (GAME.mode === 'arena' ? generateArena : generateMap)(); debris.length = 0; smokeSys.list.length = 0; fireSys.list.length = 0;
     fireSources.length = 0; bombs.forEach(b => scene.remove(b.mesh)); bombs.length = 0;
@@ -1186,9 +1241,61 @@ function muzzleFlash(strength) {
 // ===========================================================================
 //  AYARLAR / ARENA / CAN / MULTIPLAYER / ADMIN
 // ===========================================================================
-const SETTINGS = { sens: 1, fov: 72, name: 'Oyuncu' + (Math.random() * 1000 | 0) };
+const SETTINGS = { sens: 1, fov: 72, name: 'Oyuncu' + (Math.random() * 1000 | 0), vol: 0.6 };
 const ADMIN = { god: false, oneshot: false };
 let panelOpen = false;
+
+// ---------------------------------------------------------------------------
+//  SES MOTORU (WebAudio ile sentez — harici dosya yok)
+// ---------------------------------------------------------------------------
+const SFX = (() => {
+  let ctx = null;
+  function ac() { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); return ctx; }
+  function resume() { try { ac().resume(); } catch (e) {} }
+  // beyaz gürültü tamponu (silah patlaması / patlama için)
+  let noiseBuf = null;
+  function noise() {
+    const c = ac();
+    if (!noiseBuf) {
+      noiseBuf = c.createBuffer(1, c.sampleRate * 1, c.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const s = c.createBufferSource(); s.buffer = noiseBuf; return s;
+  }
+  function env(g, t, peak, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+  // patlama benzeri ses: gürültü + low-pass + düşen frekans
+  function blast(t, dur, cutoff, peak) {
+    const c = ac(), n = noise(), f = c.createBiquadFilter(), g = c.createGain();
+    f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(cutoff * 0.25, t + dur);
+    env(g, t, peak * SETTINGS.vol, dur);
+    n.connect(f); f.connect(g); g.connect(c.destination); n.start(t); n.stop(t + dur + 0.05);
+  }
+  function tone(t, freq, freq2, dur, peak, type = 'square') {
+    const c = ac(), o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, freq2), t + dur);
+    env(g, t, peak * SETTINGS.vol, dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.05);
+  }
+  return {
+    resume,
+    shoot(w) {
+      const t = ac().currentTime, k = w.kind, n = w.name;
+      if (k === 'sniper' || n === 'AWP') { blast(t, 0.28, 4000, 0.9); tone(t, 220, 60, 0.18, 0.4, 'sawtooth'); }
+      else if (n === 'POMPALI') { blast(t, 0.3, 2600, 1.0); }
+      else if (n === 'G3') { blast(t, 0.14, 3600, 0.8); tone(t, 180, 70, 0.08, 0.3, 'square'); }
+      else if (n === 'AK-47' || n === 'HK416') { blast(t, 0.10, 3200, 0.65); }
+      else if (n === 'UZI') { blast(t, 0.06, 2800, 0.45); }
+      else if (k === 'bomb') { tone(t, 320, 120, 0.12, 0.4, 'sine'); } // fırlatma "tuf"
+      else { blast(t, 0.09, 3000, 0.55); } // pistol
+    },
+    explosion() { const t = ac().currentTime; blast(t, 0.7, 1400, 1.2); tone(t, 90, 30, 0.5, 0.6, 'sawtooth'); },
+    hit() { tone(ac().currentTime, 1400, 900, 0.06, 0.5, 'square'); }, // isabet "tık"
+    hurt() { tone(ac().currentTime, 180, 90, 0.18, 0.5, 'sawtooth'); },
+    death() { const t = ac().currentTime; tone(t, 300, 60, 0.6, 0.6, 'sawtooth'); blast(t, 0.4, 1000, 0.5); },
+    respawn() { const t = ac().currentTime; tone(t, 400, 800, 0.18, 0.4, 'sine'); tone(t + 0.12, 700, 1100, 0.18, 0.4, 'sine'); },
+  };
+})();
 
 // --- Arena haritası (sınırlı, duvarlı) ---
 const ARENA = { size: 480, wall: 60 }; // 480*0.1 = 48m (eski boyutun 2 katı)
@@ -1273,11 +1380,12 @@ function applyDamage(dmg, fromName, fromId) {
   LP.hp -= dmg;
   flashEl.style.background = '#f00'; flashEl.style.opacity = 0.35;
   setTimeout(() => { flashEl.style.opacity = 0; flashEl.style.background = '#fff'; }, 80);
+  SFX.hurt();
   if (LP.hp <= 0) die(fromName, fromId);
   updateHealthUI();
 }
 function die(killer, killerId) {
-  LP.dead = true; LP.deaths++;
+  LP.dead = true; LP.deaths++; SFX.death();
   addKillFeed((killer || '?') + ' → ' + SETTINGS.name);
   net.broadcast({ t: 'death', id: net.id, killer: killer || '?', victim: SETTINGS.name, killerId });
   updateHealthUI();
@@ -1288,6 +1396,7 @@ function respawn(initial) {
   player.vel.set(0, 0, 0); player.fly = false;
   LP.hp = LP.maxHp; LP.dead = false;
   LP.shieldUntil = performance.now() + 3000; // canlanınca 3sn kalkan
+  if (GAME.started) SFX.respawn();
   updateHealthUI();
 }
 
@@ -1420,6 +1529,7 @@ function checkPlayerHit(dir, reach, dmg) {
     const realDmg = ADMIN.oneshot ? 999 : dmg;
     net.broadcast({ t: 'hit', target: id, dmg: realDmg, fromName: SETTINGS.name, fromId: net.id });
     spawnDust(pHit.point.x, pHit.point.y, pHit.point.z, 0.4);
+    SFX.hit();
     return true;
   }
   return false;
@@ -1441,6 +1551,7 @@ window.__closePanels = () => {
 // Ayarlar bağla
 document.getElementById('setSens').addEventListener('input', e => SETTINGS.sens = +e.target.value);
 document.getElementById('setFov').addEventListener('input', e => { SETTINGS.fov = +e.target.value; camera.fov = SETTINGS.fov; camera.updateProjectionMatrix(); });
+document.getElementById('setVol').addEventListener('input', e => { SETTINGS.vol = +e.target.value; });
 const nameInput = document.getElementById('setName'); nameInput.value = SETTINGS.name;
 nameInput.addEventListener('input', e => SETTINGS.name = e.target.value || 'Oyuncu');
 // Admin bağla
